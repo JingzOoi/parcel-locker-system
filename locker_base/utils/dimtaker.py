@@ -4,16 +4,17 @@ from imutils import contours
 import numpy as np
 import imutils
 import cv2
+from PIL import Image, ImageEnhance
 
 
 class Dimtaker:
 
-    """Dimension taker. Supply with image."""
+    """Dimension taker. Supply with image. Values/parameters are set to suit my needs."""
 
     PX_PER_METRIC = None
     FILTER_RATIO = 1/4
 
-    def __init__(self, orig_image, process=False):
+    def __init__(self, orig_image: np.ndarray, process: bool = False):
         self.image = orig_image if not process else Dimtaker.__process(orig_image)
         self.drawn_image = None
         self.obj_dict = {}
@@ -23,15 +24,42 @@ class Dimtaker:
         return cls(cv2.imread(file_path), process)
 
     @staticmethod
-    def __process(orig_image):
-        # TODO: process images (rotate, sharpen, trim)
-        return orig_image
+    def convert_from_cv2_to_image(img: np.ndarray) -> Image:
+        # return Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        return Image.fromarray(img)
 
     @staticmethod
-    def show_image(image, scale=1.0):
+    def convert_from_image_to_cv2(img: Image) -> np.ndarray:
+        # return cv2.cvtColor(numpy.array(img), cv2.COLOR_RGB2BGR)
+        return np.asarray(img)
+
+    @staticmethod
+    def __process(orig_image: np.ndarray):
+        # rotate, crop, and enhance image. all parameters are subject to change depending on my requirements.
+        processed_image = imutils.rotate(orig_image, angle=178)
+        # starting this line, pillow is used. take note to convert array, which cv2 uses, to image file, which is used by pil, and vice versa.
+        processed_image = Dimtaker.convert_from_cv2_to_image(processed_image)
+        # processed_image = img.rotate(176) <- rotation done on this step looks terrible, for some reason.
+        processed_image = processed_image.crop((106, 35, 688, 448))
+        processed_image = ImageEnhance.Sharpness(processed_image).enhance(2)  # i honestly have no idea if this has a big enough effect.
+        # process back to numpy array
+        img_numpy = Dimtaker.convert_from_image_to_cv2(processed_image)
+        # Dimtaker.save_image(img_numpy, "image.jpg")
+        return img_numpy
+
+    @staticmethod
+    def show_image(image: np.ndarray, scale=1.0):
         """Shows a supplied image and waits for a keypress. Will block the rest of the code, so use this for debugging only."""
         cv2.imshow("Image", imutils.resize(image.copy(), int(image.shape[1]*scale)))
         cv2.waitKey(0)
+
+    @staticmethod
+    def save_image(image: np.ndarray, filename: str):
+        try:
+            cv2.imwrite(filename, image)
+            return True
+        except:
+            return False
 
     @staticmethod
     def midpoint(point_A, point_B):
@@ -39,7 +67,7 @@ class Dimtaker:
         return ((point_A[0] + point_B[0]) * 0.5, (point_A[1] + point_B[1]) * 0.5)
 
     @staticmethod
-    def detect_edges(image):
+    def detect_edges(image: np.ndarray):
         edged = cv2.Canny(image, 30, 50)
         edged = cv2.dilate(edged, None, iterations=2)
         edged = cv2.erode(edged, None, iterations=1)
@@ -99,5 +127,6 @@ class Dimtaker:
 
 
 if __name__ == "__main__":
-    dimtaker = Dimtaker.from_path("images/image_edited.jpg")
-    obj_dict = dimtaker.get_object_dimensions()
+    dimtaker = Dimtaker.from_path("resources/image.jpg", process=True)
+    print(dimtaker.get_object_dimensions())
+    Dimtaker.show_image(dimtaker.drawn_image)
