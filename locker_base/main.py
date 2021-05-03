@@ -1,8 +1,5 @@
-from model.LockerBase import LockerBase
-from model.LockerUnit import LockerUnit
+from utils.dimtaker import Dimtaker
 from utils.construct import construct_path
 
 
-lb = LockerBase.load_from_json()
-
-print(lb.id)
+dimtaker = Dimtaker.from_path(construct_path("resources", "image_edited.jpg"))
