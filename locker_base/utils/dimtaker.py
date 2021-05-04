@@ -7,7 +7,7 @@ import cv2
 from PIL import Image, ImageEnhance
 import RPi.GPIO as GPIO
 from time import time, sleep
-from picamera import PiCamera
+from imagetaker import Imagetaker
 
 
 class Dimtaker:
@@ -37,14 +37,15 @@ class Dimtaker:
 
     @classmethod
     def from_camera(cls, process=False):
-        WIDTH_PX, HEIGHT_PX = (2144, 1440)
-        camera = PiCamera()
-        camera.resolution = (WIDTH_PX, HEIGHT_PX)
-        # camera.framerate = 30
-        # camera.shutter_speed = 6000000
-        # camera.iso = 100
-        img = np.empty((HEIGHT_PX, WIDTH_PX, 3), dtype=np.uint8)
-        camera.capture(img, "bgr")
+        # WIDTH_PX, HEIGHT_PX = (2144, 1440)
+        # camera = PiCamera()
+        # camera.resolution = (WIDTH_PX, HEIGHT_PX)
+        # # camera.framerate = 30
+        # # camera.shutter_speed = 6000000
+        # # camera.iso = 100
+        # img = np.empty((HEIGHT_PX, WIDTH_PX, 3), dtype=np.uint8)
+        # camera.capture(img, "bgr")
+        img = Imagetaker.take_image()
         return cls(img, process)
 
     @staticmethod
