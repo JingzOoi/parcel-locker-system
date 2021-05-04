@@ -27,7 +27,7 @@ class Dimtaker:
 
     def __init__(self, orig_image: np.ndarray, process: bool = False):
         self.image = orig_image if not process else Dimtaker.__process(orig_image)
-        self.drawn_image = None  # get_object_dimensions() needs to be run at least once for this to take up a value.
+        self.drawn_image = None  # take_object_dimensions() needs to be run at least once for this to take up a value.
         self.obj_dict = {}
         self.__init_height_sensor()
 
@@ -119,10 +119,10 @@ class Dimtaker:
         GPIO.setup(Dimtaker.DISTANCE_TRIG_PIN, GPIO.OUT)
         GPIO.setup(Dimtaker.DISTANCE_ECHO_PIN, GPIO.IN)
         if not cls.DISTANCE_FULL:
-            cls.DISTANCE_FULL = cls.get_height()
+            cls.DISTANCE_FULL = cls.take_height()
 
     @staticmethod
-    def get_height():
+    def take_height():
         GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, True)
         sleep(0.00001)
         GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
@@ -137,7 +137,7 @@ class Dimtaker:
 
         return Dimtaker.DISTANCE_FULL - distance
 
-    def get_object_dimensions(self, reference_width=None, offset=0):
+    def take_object_dimensions(self, reference_width=None, offset=0):
         # TODO: integrate with ultrasonic sensor to get height of object.
         reference_width = Dimtaker.REFERENCE_WIDTH if reference_width is None else reference_width
         gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
@@ -201,11 +201,11 @@ class Dimtaker:
 
         self.drawn_image = orig
         if len(self.obj_dict) >= 1:
-            self.obj_dict["height"] = Dimtaker.get_height()
+            self.obj_dict["height"] = Dimtaker.take_height()
         return self.obj_dict
 
 
 if __name__ == "__main__":
     dimtaker = Dimtaker.from_camera(process=True)
-    print(dimtaker.get_object_dimensions())
+    print(dimtaker.take_object_dimensions())
     Dimtaker.save_image(dimtaker.drawn_image, "test.jpg")
