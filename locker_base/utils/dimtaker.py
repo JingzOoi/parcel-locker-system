@@ -14,9 +14,12 @@ class Dimtaker:
     PX_PER_METRIC = None
     FILTER_RATIO = 1/4
 
+    PROCESS_ROTATION_ANGLE = 179
+    PROCESS_CROP_COORDINATES = (80, 0, 720, 446)  # left, top, right, bottom. is a rect, so no need for x, y for every point.
+
     def __init__(self, orig_image: np.ndarray, process: bool = False):
         self.image = orig_image if not process else Dimtaker.__process(orig_image)
-        self.drawn_image = None
+        self.drawn_image = None  # get_object_dimensions() needs to be run at least once for this to take up a value.
         self.obj_dict = {}
 
     @classmethod
@@ -25,22 +28,20 @@ class Dimtaker:
 
     @staticmethod
     def convert_from_cv2_to_image(img: np.ndarray) -> Image:
-        # return Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         return Image.fromarray(img)
 
     @staticmethod
     def convert_from_image_to_cv2(img: Image) -> np.ndarray:
-        # return cv2.cvtColor(numpy.array(img), cv2.COLOR_RGB2BGR)
         return np.asarray(img)
 
     @staticmethod
     def __process(orig_image: np.ndarray):
         # rotate, crop, and enhance image. all parameters are subject to change depending on my requirements.
-        processed_image = imutils.rotate(orig_image, angle=178)
+        processed_image = imutils.rotate(orig_image, angle=Dimtaker.PROCESS_ROTATION_ANGLE)
         # starting this line, pillow is used. take note to convert array, which cv2 uses, to image file, which is used by pil, and vice versa.
         processed_image = Dimtaker.convert_from_cv2_to_image(processed_image)
         # processed_image = img.rotate(176) <- rotation done on this step looks terrible, for some reason.
-        processed_image = processed_image.crop((106, 35, 688, 448))
+        processed_image = processed_image.crop(Dimtaker.PROCESS_CROP_COORDINATES)
         processed_image = ImageEnhance.Sharpness(processed_image).enhance(2)  # i honestly have no idea if this has a big enough effect.
         # process back to numpy array
         img_numpy = Dimtaker.convert_from_image_to_cv2(processed_image)
@@ -72,6 +73,16 @@ class Dimtaker:
         edged = cv2.dilate(edged, None, iterations=2)
         edged = cv2.erode(edged, None, iterations=1)
         return edged
+
+    @staticmethod
+    def get_height():
+        """
+        TODO: get the height of the parcel from the ultrasonic sensor.
+        Option 1: ping the wirelessly connected ultrasonic sensor node through MQTT. This is considered because I don't have the suitable resistors needed to directly connect the sensor to the Pi. The file needed to flash the ESP is the .yaml file. This may be dangerous, since MQTT may be blocking, and this needs to publish and wait for results. Do not do this if possible.
+        Option 2: get the wired ultrasonic sensor to return the height by pinging it directly.
+        """
+
+        pass
 
     def get_object_dimensions(self, reference_width=24, offset=0):
         # TODO: integrate with ultrasonic sensor to get height of object.
@@ -127,6 +138,6 @@ class Dimtaker:
 
 
 if __name__ == "__main__":
-    dimtaker = Dimtaker.from_path("resources/image.jpg", process=True)
+    dimtaker = Dimtaker.from_path("resources/image2.jpg", process=True)
     print(dimtaker.get_object_dimensions())
     Dimtaker.show_image(dimtaker.drawn_image)
