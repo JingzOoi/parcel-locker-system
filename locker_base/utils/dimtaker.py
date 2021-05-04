@@ -7,7 +7,7 @@ import cv2
 from PIL import Image, ImageEnhance
 import RPi.GPIO as GPIO
 from time import time, sleep
-from imagetaker import Imagetaker
+from .imagetaker import Imagetaker
 
 
 class Dimtaker:
@@ -18,18 +18,9 @@ class Dimtaker:
     FILTER_RATIO = 1/4
     REFERENCE_WIDTH = 24  # mm
 
-    DISTANCE_FULL = 300  # mm
+    DISTANCE_FULL = None  # mm
     DISTANCE_TRIG_PIN = 4
     DISTANCE_ECHO_PIN = 18
-
-    PROCESS_ROTATION_ANGLE = 180
-    PROCESS_CROP_COORDINATES = (135, 15, 2097, 1410)  # left, top, right, bottom. is a rect, so no need for x, y for every point.
-
-    def __init__(self, orig_image: np.ndarray, process: bool = False):
-        self.image = orig_image if not process else Dimtaker.__process(orig_image)
-        self.drawn_image = None  # take_object_dimensions() needs to be run at least once for this to take up a value.
-        self.obj_dict = {}
-        self.__init_height_sensor()
 
     @classmethod
     def from_path(cls, file_path, process=False):
@@ -37,54 +28,8 @@ class Dimtaker:
 
     @classmethod
     def from_camera(cls, process=False):
-        # WIDTH_PX, HEIGHT_PX = (2144, 1440)
-        # camera = PiCamera()
-        # camera.resolution = (WIDTH_PX, HEIGHT_PX)
-        # # camera.framerate = 30
-        # # camera.shutter_speed = 6000000
-        # # camera.iso = 100
-        # img = np.empty((HEIGHT_PX, WIDTH_PX, 3), dtype=np.uint8)
-        # camera.capture(img, "bgr")
         img = Imagetaker.take_image()
         return cls(img, process)
-
-    @staticmethod
-    def convert_from_cv2_to_image(img: np.ndarray) -> Image:
-        return Image.fromarray(img)
-
-    @staticmethod
-    def convert_from_image_to_cv2(img: Image) -> np.ndarray:
-        return np.asarray(img)
-
-    @staticmethod
-    def __process(orig_image: np.ndarray):
-        # rotate, crop, and enhance image. all parameters are subject to change depending on my requirements.
-        processed_image = imutils.rotate(orig_image, angle=Dimtaker.PROCESS_ROTATION_ANGLE)
-        # starting this line, pillow is used. take note to convert array, which cv2 uses, to image file, which is used by pil, and vice versa.
-        processed_image = Dimtaker.convert_from_cv2_to_image(processed_image)
-        # processed_image = img.rotate(176) <- rotation done on this step looks terrible, for some reason.
-        processed_image = processed_image.crop(Dimtaker.PROCESS_CROP_COORDINATES)
-        processed_image = ImageEnhance.Sharpness(processed_image).enhance(1.5)  # i honestly have no idea if this has a big enough effect.
-        # process back to numpy array
-        processed_image = ImageEnhance.Brightness(processed_image).enhance(1.5)
-        img_numpy = Dimtaker.convert_from_image_to_cv2(processed_image)
-        # Dimtaker.save_image(img_numpy, "image.jpg")
-        return img_numpy
-
-    @staticmethod
-    def show_image(image: np.ndarray, scale=1.0):
-        """Shows a supplied image and waits for a keypress. Will block the rest of the code, so use this for debugging only."""
-        cv2.imshow("Image", imutils.resize(image.copy(), int(image.shape[1]*scale)))
-        cv2.waitKey(0)
-
-    @staticmethod
-    def save_image(image: np.ndarray, filename: str):
-        """This is for debugging and calibration purposes"""
-        try:
-            cv2.imwrite(filename, image)
-            return True
-        except:
-            return False
 
     @staticmethod
     def midpoint(point_A, point_B):
@@ -113,7 +58,7 @@ class Dimtaker:
         return edged
 
     @classmethod
-    def __init_height_sensor(cls):
+    def init_height_sensor(cls):
         GPIO.cleanup()
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(Dimtaker.DISTANCE_TRIG_PIN, GPIO.OUT)
@@ -135,24 +80,24 @@ class Dimtaker:
 
         distance = sig_time / 0.0000058  # mm
 
-        return Dimtaker.DISTANCE_FULL - distance
+        return (Dimtaker.DISTANCE_FULL - distance) if Dimtaker.DISTANCE_FULL else distance
 
-    def take_object_dimensions(self, reference_width=None, offset=0):
+    @staticmethod
+    def take_object_dimensions(image: np.ndarray, reference_width=None, save: bool = False):
         # TODO: integrate with ultrasonic sensor to get height of object.
+        obj_dict = {}
         reference_width = Dimtaker.REFERENCE_WIDTH if reference_width is None else reference_width
-        gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (7, 7), 0)
         edged = cv2.Canny(gray, 25, 50)
         edged = cv2.dilate(edged, None, iterations=2)
         edged = cv2.erode(edged, None, iterations=1)
-        Dimtaker.save_image(edged, "edged.jpg")
         cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cnts = imutils.grab_contours(cnts)
         (cnts, _) = contours.sort_contours(cnts)
         cnts = [c for c in cnts if cv2.contourArea(c) > 1500]
-        orig = self.image.copy()
+        orig = image.copy()
         obj_count = 0
-        box_list = []
         for c in cnts:
             box = cv2.minAreaRect(c)
             box = cv2.cv.BoxPoints(box) if imutils.is_cv2() else cv2.boxPoints(box)
@@ -180,32 +125,23 @@ class Dimtaker:
                 dimB = dB / Dimtaker.PX_PER_METRIC
 
                 mp = Dimtaker.midpoint((tltrX, tltrY), (blbrX, blbrY))
-                # if box_list:
-                #     for bx in box_list:
-                #         if not Dimtaker._midpoint_check(mp, bx):
-                #             continue
-                #         else:
-                #             box_list.append(box)
-                # else:
-                #     box_list.append(box)
-
-                # print(len(box_list))
 
                 # draw the object sizes on the image
                 cv2.putText(orig, f"{dimB:.1f}mm", (int(tltrX - 15), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
                 cv2.putText(orig, f"{dimA:.1f}mm", (int(trbrX + 10), int(trbrY)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
                 if obj_count:
                     cv2.putText(orig, f"{obj_count}", (int(mp[0]), int(mp[1])), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 5)
-                    self.obj_dict[obj_count] = {"width": dimB, "length": dimA}
+                    obj_dict[obj_count] = {"width": dimB, "length": dimA}
+                if save:
+                    Imagetaker.save_image(orig, "Dimtaker_take_object_dimensions.jpg")
             obj_count += 1
 
-        self.drawn_image = orig
-        if len(self.obj_dict) >= 1:
-            self.obj_dict["height"] = Dimtaker.take_height()
-        return self.obj_dict
+        if len(obj_dict) >= 1:
+            obj_dict["height"] = Dimtaker.take_height()
+        return obj_dict
 
 
 if __name__ == "__main__":
     dimtaker = Dimtaker.from_camera(process=True)
     print(dimtaker.take_object_dimensions())
-    Dimtaker.save_image(dimtaker.drawn_image, "test.jpg")
+    # Dimtaker.save_image(dimtaker.drawn_image, "test.jpg")

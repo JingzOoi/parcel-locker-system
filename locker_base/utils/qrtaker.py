@@ -1,6 +1,6 @@
 from cv2 import QRCodeDetector, imread
 import cv2
-from imagetaker import Imagetaker
+from .imagetaker import Imagetaker
 
 
 class QRtaker:
@@ -10,6 +10,8 @@ class QRtaker:
         data, bbox, _ = detector.detectAndDecode(img)
         if bbox is not None:
             return data
+        else:
+            return None
 
 
 
