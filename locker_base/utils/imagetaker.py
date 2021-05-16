@@ -38,7 +38,7 @@ class Imagetaker:
     @staticmethod
     def load_image(filename: str) -> np.ndarray:
         try:
-            cv2.imread(filename)
+            return cv2.imread(filename)
         except Exception as e:
             print(f"[ERROR] [IMTKR] An error has occured when reading file with name {filename}: {e}")
             return None
