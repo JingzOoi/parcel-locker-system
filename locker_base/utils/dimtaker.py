@@ -83,7 +83,20 @@ class Dimtaker:
         return (Dimtaker.DISTANCE_FULL - distance) if Dimtaker.DISTANCE_FULL else distance
 
     @staticmethod
-    def take_object_dimensions(image: np.ndarray, reference_width=None, save: bool = False):
+    def __calculate_length_based_on_depth(p1, h1, p0, h0, l0):
+        """
+        returns l1 from all the parameters given. Refer to white paper. I know this is a superficial function. Don't @ me.
+        l0: the actual length of the side to measure on the parcel.
+        p1: the pixel distance of the side to measure on the parcel.
+        h1: the distance from the sensor to the top of the parcel.
+        p0: the pixel distance of the side to measure on the fiducial.
+        h0: the distance from the sensor to the platform surface.
+        l0: the actual length of the side to measure on the fiducial.
+        """
+        return (p1*h1*l0)/(p0*h0)
+
+    @staticmethod
+    def take_object_dimensions(image: np.ndarray, reference_width=None, save: bool = False, height=True):
         # TODO: integrate with ultrasonic sensor to get height of object.
         obj_dict = {}
         reference_width = Dimtaker.REFERENCE_WIDTH if reference_width is None else reference_width
@@ -97,8 +110,8 @@ class Dimtaker:
         (cnts, _) = contours.sort_contours(cnts)
         cnts = [c for c in cnts if cv2.contourArea(c) > 1500]
         orig = image.copy()
-        obj_count = 0
-        for c in cnts:
+        ref_fiducial = {"awidth": 0, "pwidth": reference_width}
+        for num, c in enumerate(cnts):
             box = cv2.minAreaRect(c)
             box = cv2.cv.BoxPoints(box) if imutils.is_cv2() else cv2.boxPoints(box)
             box = np.array(box, dtype="int")
@@ -108,40 +121,41 @@ class Dimtaker:
             (blbrX, blbrY) = Dimtaker.midpoint(bl, br)
             (tlblX, tlblY) = Dimtaker.midpoint(tl, bl)
             (trbrX, trbrY) = Dimtaker.midpoint(tr, br)
-            dA = dist.euclidean((tltrX, tltrY), (blbrX, blbrY))
-            dB = dist.euclidean((tlblX, tlblY), (trbrX, trbrY))
-            if dA/dB > Dimtaker.FILTER_RATIO and dB/dA > Dimtaker.FILTER_RATIO:
+            length = dist.euclidean((tltrX, tltrY), (blbrX, blbrY))  # calculates distance between two points
+            width = dist.euclidean((tlblX, tlblY), (trbrX, trbrY))
+            if length/width > Dimtaker.FILTER_RATIO and width/length > Dimtaker.FILTER_RATIO:
                 for (x, y) in box:
                     cv2.circle(orig, (int(x), int(y)), 5, (0, 0, 255), -1)
                 cv2.drawContours(orig, [box.astype("int")], -1, (0, 255, 0), 2)
                 # if the pixels per metric has not been initialized, then
                 # compute it as the ratio of pixels to supplied metric
                 # (in this case, mm)
-                if Dimtaker.PX_PER_METRIC is None:
-                    Dimtaker.PX_PER_METRIC = dB / reference_width
+                if not Dimtaker.PX_PER_METRIC:
+                    Dimtaker.PX_PER_METRIC = width / reference_width
+
+                if not ref_fiducial["width"]:
+                    ref_fiducial["width"] = width
 
                 # compute the size of the object
-                dimA = dA / Dimtaker.PX_PER_METRIC
-                dimB = dB / Dimtaker.PX_PER_METRIC
+                dimA = length / Dimtaker.PX_PER_METRIC
+                dimB = width / Dimtaker.PX_PER_METRIC
 
                 mp = Dimtaker.midpoint((tltrX, tltrY), (blbrX, blbrY))
 
                 # draw the object sizes on the image
                 cv2.putText(orig, f"{dimB:.1f}mm", (int(tltrX - 15), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
                 cv2.putText(orig, f"{dimA:.1f}mm", (int(trbrX + 10), int(trbrY)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                if obj_count:
-                    cv2.putText(orig, f"{obj_count}", (int(mp[0]), int(mp[1])), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 5)
-                    obj_dict[obj_count] = {"width": dimB, "length": dimA}
+                if num:
+                    cv2.putText(orig, f"{num}", (int(mp[0]), int(mp[1])), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 5)
+                    num = {"width": dimB, "length": dimA}
                 if save:
                     Imagetaker.save_image(orig, "Dimtaker_take_object_dimensions.jpg")
-            obj_count += 1
 
-        if len(obj_dict) >= 1:
+        if len(obj_dict) >= 1 and height:
             obj_dict["height"] = Dimtaker.take_height()
         return obj_dict
 
 
 if __name__ == "__main__":
-    dimtaker = Dimtaker.from_camera(process=True)
-    print(dimtaker.take_object_dimensions())
+    print(Dimtaker.take_object_dimensions(Imagetaker.load_image("from_camera.jpg")))
     # Dimtaker.save_image(dimtaker.drawn_image, "test.jpg")
