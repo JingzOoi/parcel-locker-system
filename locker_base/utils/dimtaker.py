@@ -18,17 +18,30 @@ class PartialObject:
     Expect to see calculations based on points on an image.
     """
 
-    def __init__(self, top_left, top_right, bottom_left, bottom_right):
+    FILTER_RATIO = 1/4
+
+    def __init__(self, contour: np.ndarray):
         """
         When initialized, four points of the box are supplied. Each of the parameters should be an array with 2 items, value for x-pos and y-pos.
         """
+        self.contour_area = cv2.contourArea(contour)
+
+        box = cv2.minAreaRect(contour)
+        box = cv2.cv.BoxPoints(box) if imutils.is_cv2() else cv2.boxPoints(box)
+        box = np.array(box, dtype="int")
+        self.box = perspective.order_points(box)
+
+        (top_left, top_right, bottom_right, bottom_left) = self.box
+        self.box_tuple = (top_left, top_right, bottom_right, bottom_left)
         upper_midpoint = PartialObject.midpoint(top_left, top_right)
         bottom_midpoint = PartialObject.midpoint(bottom_left, bottom_right)
         left_midpoint = PartialObject.midpoint(top_left, bottom_left)
         right_midpoint = PartialObject.midpoint(top_right, bottom_right)
+        self.pixel_length = dist.euclidean(upper_midpoint, bottom_midpoint)
+        self.pixel_width = dist.euclidean(left_midpoint, right_midpoint)
 
-        self.p_length = dist.euclidean(upper_midpoint, bottom_midpoint)
-        self.p_width = dist.euclidean(left_midpoint, right_midpoint)
+        self.actual_length = None
+        self.actual_width = None
 
     @staticmethod
     def midpoint(point_A, point_B):
@@ -39,6 +52,22 @@ class PartialObject:
     def scale_to_distance(p_length_to_measure, dist, p_length_of_reference, full_dist, a_length_of_reference):
         """Calculate the actual length based on the depth of field. See white paper for calculation."""
         return ((p_length_to_measure*dist)/(p_length_of_reference*full_dist))*a_length_of_reference
+
+    @staticmethod
+    def scale_to_reference(p_length_to_measure, p_length_of_reference, a_length_of_reference):
+        """Calculate the actual length based on the ratio of actual length vs pixel length."""
+        return ((p_length_to_measure)/(p_length_of_reference))*a_length_of_reference
+
+    def draw(self, img, label=True):
+        cv2.drawContours(img, [self.box.astype("int")], -1, (0, 255, 0), 2)
+        if label:
+            assert self.actual_length and self.actual_width, "Actual length or actual width of object is not calculated!"
+            upper = PartialObject.midpoint(self.box_tuple[0], self.box_tuple[1])
+            righter = PartialObject.midpoint(self.box_tuple[1], self.box_tuple[2])
+            upper_offset = (int(upper[0]), int(upper[1]-15))
+            righter_offset = (int(righter[0]+15), int(righter[1]))
+            cv2.putText(img, f"{self.actual_width:.1f}mm", upper_offset, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            cv2.putText(img, f"{self.actual_length:.1f}mm", righter_offset, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
 
 class Dimtaker:
@@ -63,30 +92,16 @@ class Dimtaker:
         return cls(img, process)
 
     @staticmethod
-    def midpoint(point_A, point_B):
-        """Calculates the midpoint between two points."""
-        return ((point_A[0] + point_B[0]) * 0.5, (point_A[1] + point_B[1]) * 0.5)
-
-    @staticmethod
-    def _midpoint_check(point, box):
-        """Checks if the midpoint of an object is in a box. Box parameter is a tuple with array values with length 2. tuple length 4: tl, tr, bl, br"""
-        point_x, point_y = point
-        tl, tr, bl, br = box
-
-        more_than_x = sum([tl[0], bl[0]])/2
-        less_than_x = sum([tr[0], br[0]])/2
-        more_than_y = sum([tl[1], tr[1]])/2
-        less_than_y = sum([bl[1], br[1]])/2
-        if point_x >= more_than_x and point_x <= less_than_x and point_y >= more_than_y and point_y <= less_than_y:
-            return False
-        return True
-
-    @staticmethod
     def detect_edges(image: np.ndarray):
-        edged = cv2.Canny(image, 25, 50)
-        edged = cv2.dilate(edged, None, iterations=1)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(gray, (7, 7), 0)
+        edged = cv2.Canny(gray, 25, 50)
+        edged = cv2.dilate(edged, None, iterations=2)
         edged = cv2.erode(edged, None, iterations=1)
-        return edged
+        cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = imutils.grab_contours(cnts)
+        (cnts, _) = contours.sort_contours(cnts)
+        return cnts
 
     @classmethod
     def init_height_sensor(cls):
@@ -95,11 +110,16 @@ class Dimtaker:
         GPIO.setup(Dimtaker.DISTANCE_TRIG_PIN, GPIO.OUT)
         GPIO.setup(Dimtaker.DISTANCE_ECHO_PIN, GPIO.IN)
         if not cls.DISTANCE_FULL:
-            cls.DISTANCE_FULL = cls.take_height()
+            cls.DISTANCE_FULL = cls.take_distance()
 
     @staticmethod
-    def take_height():
-        GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, True)
+    def take_distance(init: bool = False):
+        if init:
+            GPIO.cleanup()
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(Dimtaker.DISTANCE_TRIG_PIN, GPIO.OUT)
+            GPIO.setup(Dimtaker.DISTANCE_ECHO_PIN, GPIO.IN)
+            GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, True)
         sleep(0.00001)
         GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
         while not GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
@@ -111,80 +131,57 @@ class Dimtaker:
 
         distance = sig_time / 0.0000058  # mm
 
-        return (Dimtaker.DISTANCE_FULL - distance) if Dimtaker.DISTANCE_FULL else distance
+        return distance
 
     @staticmethod
-    def __calculate_length_based_on_depth(p1, h1, p0, h0, l0):
-        """
-        returns l1 from all the parameters given. Refer to white paper. I know this is a superficial function. Don't @ me.
-        l0: the actual length of the side to measure on the parcel.
-        p1: the pixel distance of the side to measure on the parcel.
-        h1: the distance from the sensor to the top of the parcel.
-        p0: the pixel distance of the side to measure on the fiducial.
-        h0: the distance from the sensor to the platform surface.
-        l0: the actual length of the side to measure on the fiducial.
-        """
-        return (p1*h1*l0)/(p0*h0)
+    def take_dimension_scale(img, full_distance=300, draw=False):
+        cnts = Dimtaker.detect_edges(img)
+        po_list = [PartialObject(c) for c in cnts]
+        # assumes the partial object on the top left corner is always going to be the fiducial.
+        fiducial = po_list.pop(0)
+        fiducial.actual_length = 24
+        fiducial.actual_width = 24
+        # uses a "greedy" filter to get the largest object in the partial object list, ignoring any other stuff such as reflections. if the camera is properly calibrated, this approach shouldn't cause any problems.
+        parcel = sorted(po_list, key=lambda po: po.contour_area, reverse=True)[0]
+        height = Dimtaker.take_distance(init=True)
+        parcel.actual_length = parcel.scale_to_distance(
+            parcel.pixel_length,
+            height,
+            fiducial.pixel_length,
+            full_distance,
+            fiducial.actual_length
+        )
+        parcel.actual_width = parcel.scale_to_distance(
+            parcel.pixel_width,
+            height,
+            fiducial.pixel_width,
+            full_distance,
+            fiducial.actual_width
+        )
+        a_height = full_distance - height
+        if draw:
+            img_copy = img.copy()
+            parcel.draw(img_copy)
+            Imagetaker.save_image(img_copy, "dimension_scale.jpg")
+        return {"length": parcel.actual_length, "width": parcel.actual_width, "height": a_height}
 
     @staticmethod
-    def take_object_dimensions(image: np.ndarray, reference_width=None, save: bool = False, height=True):
-        # TODO: integrate with ultrasonic sensor to get height of object.
-        obj_dict = {}
-        reference_width = Dimtaker.REFERENCE_WIDTH if reference_width is None else reference_width
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        gray = cv2.GaussianBlur(gray, (7, 7), 0)
-        edged = cv2.Canny(gray, 25, 50)
-        edged = cv2.dilate(edged, None, iterations=2)
-        edged = cv2.erode(edged, None, iterations=1)
-        cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = imutils.grab_contours(cnts)
-        (cnts, _) = contours.sort_contours(cnts)
-        cnts = [c for c in cnts if cv2.contourArea(c) > 1500]
-        orig = image.copy()
-        ref_fiducial = {"awidth": 0, "pwidth": reference_width}
-        for num, c in enumerate(cnts):
-            box = cv2.minAreaRect(c)
-            box = cv2.cv.BoxPoints(box) if imutils.is_cv2() else cv2.boxPoints(box)
-            box = np.array(box, dtype="int")
-            box = perspective.order_points(box)
-            (tl, tr, br, bl) = box  # PartialObject should start here
-            (tltrX, tltrY) = Dimtaker.midpoint(tl, tr)
-            (blbrX, blbrY) = Dimtaker.midpoint(bl, br)
-            (tlblX, tlblY) = Dimtaker.midpoint(tl, bl)
-            (trbrX, trbrY) = Dimtaker.midpoint(tr, br)
-            length = dist.euclidean((tltrX, tltrY), (blbrX, blbrY))  # calculates distance between two points
-            width = dist.euclidean((tlblX, tlblY), (trbrX, trbrY))
-            if length/width > Dimtaker.FILTER_RATIO and width/length > Dimtaker.FILTER_RATIO:
-                for (x, y) in box:
-                    cv2.circle(orig, (int(x), int(y)), 5, (0, 0, 255), -1)
-                cv2.drawContours(orig, [box.astype("int")], -1, (0, 255, 0), 2)
-                # if the pixels per metric has not been initialized, then
-                # compute it as the ratio of pixels to supplied metric
-                # (in this case, mm)
-                if not Dimtaker.PX_PER_METRIC:
-                    Dimtaker.PX_PER_METRIC = width / reference_width
-
-                if not ref_fiducial["width"]:
-                    ref_fiducial["width"] = width
-
-                # compute the size of the object
-                dimA = length / Dimtaker.PX_PER_METRIC
-                dimB = width / Dimtaker.PX_PER_METRIC
-
-                mp = Dimtaker.midpoint((tltrX, tltrY), (blbrX, blbrY))
-
-                # draw the object sizes on the image
-                cv2.putText(orig, f"{dimB:.1f}mm", (int(tltrX - 15), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                cv2.putText(orig, f"{dimA:.1f}mm", (int(trbrX + 10), int(trbrY)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                if num:
-                    cv2.putText(orig, f"{num}", (int(mp[0]), int(mp[1])), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 5)
-                    num = {"width": dimB, "length": dimA}
-                if save:
-                    Imagetaker.save_image(orig, "Dimtaker_take_object_dimensions.jpg")
-
-        if len(obj_dict) >= 1 and height:
-            obj_dict["height"] = Dimtaker.take_height()
-        return obj_dict
+    def take_dimension_ratio(img, full_distance=300, draw=False):
+        cnts = Dimtaker.detect_edges(img)
+        po_list = [PartialObject(c) for c in cnts]
+        fiducial = po_list.pop(0)
+        fiducial.actual_length = 24
+        fiducial.actual_width = 24
+        parcel = sorted(po_list, key=lambda po: po.contour_area, reverse=True)[0]
+        parcel.actual_length = parcel.scale_to_reference(parcel.pixel_length, fiducial.pixel_length, fiducial.actual_length)
+        parcel.actual_width = parcel.scale_to_reference(parcel.pixel_width, fiducial.pixel_width, fiducial.actual_width)
+        if draw:
+            img_copy = img.copy()
+            parcel.draw(img_copy)
+            Imagetaker.save_image(img_copy, "dimension_ratio.jpg")
+        height = Dimtaker.take_distance(init=True)
+        a_height = full_distance - height
+        return {"length": parcel.actual_length, "width": parcel.actual_width, "height": a_height}
 
 
 if __name__ == "__main__":
