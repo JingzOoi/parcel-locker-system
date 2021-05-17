@@ -10,6 +10,37 @@ from time import time, sleep
 from .imagetaker import Imagetaker
 
 
+class PartialObject:
+    """
+    A representation of an object seen by the camera through edge processing.
+
+    This class is a collection of attributes and methods that is used to determine certain things about the objects in the image, and takes advantage of certain built-in methods provided by Python for easy readibility.
+    Expect to see calculations based on points on an image.
+    """
+
+    def __init__(self, top_left, top_right, bottom_left, bottom_right):
+        """
+        When initialized, four points of the box are supplied. Each of the parameters should be an array with 2 items, value for x-pos and y-pos.
+        """
+        upper_midpoint = PartialObject.midpoint(top_left, top_right)
+        bottom_midpoint = PartialObject.midpoint(bottom_left, bottom_right)
+        left_midpoint = PartialObject.midpoint(top_left, bottom_left)
+        right_midpoint = PartialObject.midpoint(top_right, bottom_right)
+
+        self.p_length = dist.euclidean(upper_midpoint, bottom_midpoint)
+        self.p_width = dist.euclidean(left_midpoint, right_midpoint)
+
+    @staticmethod
+    def midpoint(point_A, point_B):
+        """Calculates the midpoint between two points."""
+        return ((point_A[0] + point_B[0]) * 0.5, (point_A[1] + point_B[1]) * 0.5)
+
+    @staticmethod
+    def scale_to_distance(p_length_to_measure, dist, p_length_of_reference, full_dist, a_length_of_reference):
+        """Calculate the actual length based on the depth of field. See white paper for calculation."""
+        return ((p_length_to_measure*dist)/(p_length_of_reference*full_dist))*a_length_of_reference
+
+
 class Dimtaker:
 
     """Dimension taker. Supply with image. Values/parameters are set to suit my needs."""
@@ -116,7 +147,7 @@ class Dimtaker:
             box = cv2.cv.BoxPoints(box) if imutils.is_cv2() else cv2.boxPoints(box)
             box = np.array(box, dtype="int")
             box = perspective.order_points(box)
-            (tl, tr, br, bl) = box
+            (tl, tr, br, bl) = box  # PartialObject should start here
             (tltrX, tltrY) = Dimtaker.midpoint(tl, tr)
             (blbrX, blbrY) = Dimtaker.midpoint(bl, br)
             (tlblX, tlblY) = Dimtaker.midpoint(tl, bl)
