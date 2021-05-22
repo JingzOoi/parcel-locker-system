@@ -28,7 +28,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser):
-    """A custom made user class to be used within Django's internal system."""
+    """A custom made user class to be used within Django's internal system. Is kind of dimension."""
     username = models.CharField(unique=True, max_length=32)
     email = models.EmailField(unique=True, max_length=255)
     is_active = models.BooleanField(default=True)
@@ -56,26 +56,27 @@ class User(AbstractBaseUser):
 
 class LockerBase(models.Model):
     """A logical representation of a locker base inside the system. A locker base can have many locker units. Is dimension."""
-    STATE_CHOICES = [
-        ("JHR", "Johor"),
-        ("KDH", "Kedah"),
-        ("KTN", "Kelantan"),
-        ("MLK", "Malacca"),
-        ("NSN", "Negeri Sembilan"),
-        ("PHG", "Pahang"),
-        ("PNG", "Penang"),
-        ("PRK", "Perak"),
-        ("PLS", "Perlis"),
-        ("SGR", "Selangor"),
-        ("TRG", "Terengganu"),
-        ("SBH", "Sabah"),
-        ("SWK", "Sarawak"),
-        ("KUL", "Federal Territory of Kuala Lumpur")
-    ]
+
+    class State(models.TextChoices):
+        JHR = "JHR", "Johor"
+        KDH = "KDH", "Kedah"
+        KTN = "KTN", "Kelantan"
+        MLK = "MLK", "Malacca"
+        NSN = "NSN", "Negeri Sembilan"
+        PHG = "PHG", "Pahang"
+        PNG = "PNG", "Penang"
+        PRK = "PRK", "Perak"
+        PLS = "PLS", "Perlis"
+        SGR = "SGR", "Selangor"
+        TRG = "TRG", "Terengganu"
+        SBH = "SBH", "Sabah"
+        SWK = "SWK", "Sarawak"
+        KUL = "KUL", "Federal Territory of Kuala Lumpur"
+
     name = models.CharField(unique=True, null=False, max_length=8)
     street_address = models.CharField(unique=False, null=False, max_length=128)
     city = models.CharField(unique=False, null=False, max_length=64)
-    state = models.CharField(choices=STATE_CHOICES, null=False, max_length=64)
+    state = models.CharField(choices=State.choices, null=False, max_length=64)
     zip_code = models.CharField(unique=False, null=False, max_length=5)
 
     def __str__(self):
@@ -98,24 +99,24 @@ class LockerActivity(models.Model):
         - Locker unit lock/unlock
 
     """
-    TYPE_CHOICES = [
-        (1, "ONLINE"),  # when the base initializes and connects to the webserver
-        (2, "OFFLINE"),  # will before death
-        (3, "REGISTER"),  # [UNIT] after base initialization, base queries units, informs webserver about available units
-        (4, "SCANQRRECIPIENT"),  # the process of determining if a QR code is a parcel or recipient identification is done on the locker base.
-        (5, "SCANQRPARCEL"),
-        (6, "SCANDIM"),  # reporting the parcel dimensions (or don't)
-        (7, "UNLOCK"),  # [UNIT] unit unlock
-        (8, "LOCK")  # [UNIT] unit lock
-    ]
+    class ActivityType(models.IntegerChoices):
+        ONLINE = 1, "ONLINE"  # when the base initializes and connects to the webserver
+        OFFLINE = 2, "OFFLINE"  # will before death
+        REGISTER = 3, "REGISTER"  # [UNIT] after base initialization, base queries units, informs webserver about available units
+        SCANQRRECIPIENT = 4, "SCANQRRECIPIENT"  # the process of determining if a QR code is a parcel or recipient identification is done on the locker base.
+        SCANQRPARCEL = 5, "SCANQRPARCEL"
+        SCANDIM = 6, "SCANDIM"  # reporting the parcel dimensions (or don't)
+        UNLOCK = 7, "UNLOCK"  # [UNIT] unit unlock
+        LOCK = 8, "LOCK"  # [UNIT] unit lock
+
     locker_base = models.ForeignKey(LockerBase, null=False, on_delete=models.CASCADE)
     locker_unit = models.ForeignKey(LockerUnit, null=True, on_delete=models.CASCADE)  # important! not every activity has to involve a locker unit!
-    _type = models.IntegerField(choices=TYPE_CHOICES, null=False)
+    _type = models.PositiveSmallIntegerField(choices=ActivityType.choices, null=False)
     datetime = models.DateTimeField(auto_now_add=True)
 
 
 class Parcel(models.Model):
-    """A parcel item to be registered within the system."""
+    """A parcel item to be registered within the system. Is dimension."""
     recipient = models.ForeignKey(User, on_delete=models.CASCADE)
     destination_locker = models.ForeignKey(LockerBase, on_delete=models.CASCADE)
     tracking_number = models.CharField(null=False, unique=True, max_length=32)  # value to be verified with qr
@@ -140,19 +141,21 @@ class ParcelActivity(models.Model):
     the use of associated locker activity allows the system to refer to past activity while not touching the dimension tables themselves.
 
     """
-    TYPE_CHOICES = [
-        (1, "REGISTER"),  # when the parcel is registered into the system
-        (2, "QUERY"),  # associated with SCANQRPARCEL
-        (3, "CHECKIN"),  # associated with SCANDIM
-        (4, "DEPOSIT"),  # associated with LOCK and UNLOCK
-        (5, "WITHDRAWAPP"),  # added when user clicks on the option to generate qr code, only type that uses qr_data
-        (6, "WITHDRAWREQ"),  # associated with SCANQRRECIPIENT
-        (7, "WITHDRAW")  # associated with LOCK and UNLOCK
-    ]
+
+    class ActivityType(models.IntegerChoices):
+
+        REGISTER = 1, "REGISTER"  # when the parcel is registered into the system
+        QUERY = 2, "QUERY"  # associated with SCANQRPARCEL
+        CHECKIN = 3, "CHECKIN"  # associated with SCANDIM
+        DEPOSIT = 4, "DEPOSIT"  # associated with LOCK and UNLOCK
+        WITHDRAWAPP = 5, "WITHDRAWAPP"  # added when user clicks on the option to generate qr code, only type that uses qr_data
+        WITHDRAWREQ = 6, "WITHDRAWREQ"  # associated with SCANQRRECIPIENT
+        WITHDRAW = 7, "WITHDRAW"  # associated with LOCK and UNLOCK
+
     parcel = models.ForeignKey(Parcel, on_delete=models.CASCADE)
-    _type = models.IntegerField(choices=TYPE_CHOICES, null=False)
+    _type = models.PositiveSmallIntegerField(choices=ActivityType.choices, null=False)
     datetime = models.DateTimeField(auto_now_add=True)
-    # image = models.ImageField() # still hesitating about adding this one, it doesn't actually add real value, just ease of tracing back to troubleshoot
+    # image = models.ImageField() # still hesitating about adding this one, it doesn't actually add real value, just ease of tracing back to troubleshoot. maybe in future versions.
     # is the qr data to verify when user tries to withdraw. should be the hash of the parcel added with the current timestamp. (planned to be implemented like this)
     qr_data = models.IntegerField(null=True, unique=True)
 
