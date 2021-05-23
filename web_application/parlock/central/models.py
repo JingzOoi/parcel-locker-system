@@ -159,4 +159,4 @@ class ParcelActivity(models.Model):
     # is the qr data to verify when user tries to withdraw. should be the hash of the parcel added with the current timestamp. (planned to be implemented like this)
     qr_data = models.IntegerField(null=True, unique=True)
 
-    associated_locker_activity = models.ForeignKey(LockerActivity, on_delete=models.CASCADE)
+    associated_locker_activity = models.ForeignKey(LockerActivity, null=True, on_delete=models.CASCADE)
