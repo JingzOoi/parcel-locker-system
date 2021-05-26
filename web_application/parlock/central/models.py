@@ -73,7 +73,7 @@ class LockerBase(models.Model):
         SWK = "SWK", "Sarawak"
         KUL = "KUL", "Federal Territory of Kuala Lumpur"
 
-    name = models.CharField(unique=True, null=False, max_length=8)
+    name = models.CharField(unique=True, null=False, max_length=64)  # should be something like "Parlock @ South City Plaza"
     street_address = models.CharField(unique=False, null=False, max_length=128)
     city = models.CharField(unique=False, null=False, max_length=64)
     state = models.CharField(choices=State.choices, null=False, max_length=64)
@@ -120,6 +120,9 @@ class Parcel(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.CASCADE)
     destination_locker = models.ForeignKey(LockerBase, on_delete=models.CASCADE)
     tracking_number = models.CharField(null=False, unique=True, max_length=32)  # value to be verified with qr
+
+    def __repr__(self) -> str:
+        return f"Parcel(recipient={self.recipient.username}, destination_locker={self.destination_locker.name}, tracking_number={self.tracking_number})"
 
 
 class ParcelActivity(models.Model):

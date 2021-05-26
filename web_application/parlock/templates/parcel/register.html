@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>Register parcel</h1>
+<form method="post" action="{% url 'parcel-register' %}">
+{% csrf_token %}
+{{form}}
+<input type="submit" class="btn btn-primary" value="Register" />
+</form>
+{% endblock content %}
