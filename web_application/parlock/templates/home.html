@@ -16,7 +16,7 @@
         <p class="mt-2 text-gray-600 dark:text-gray-200">Destination: {{parcel.destination_locker.name}}</p>
         
         <div class="flex justify-end mt-4">
-            <a href="#" class="text-xl font-medium text-indigo-500 dark:text-indigo-300">View Details</a>
+            <a href="{% url 'parcel-detail' parcel_id=parcel.id %}" class="text-xl font-medium text-indigo-500 dark:text-indigo-300">View Details</a>
         </div>
     </div>
 <section>
