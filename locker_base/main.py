@@ -29,8 +29,21 @@ while True:
             img = Imagetaker.take_image(process=True, save=True)
             qr = QRtaker.take_qr(img)
             if qr:
-                print(f"[MAIN] QR information obtained: {qr}. Taking object dimensions...")
+                print(f"[MAIN] QR information obtained: {qr}.")
+                # TODO: determine if format matches the recipient qr
+                # if yes, make a POST request to the server to get recipient information using collection id and self id.
+                    # then if successfully verified that the recipient does have a parcel that is being deposited in this locker, receive information about which one. unlock said locker.
+                    # wait for button press and lock.
+                # if no, make a POST request to the webserver to get parcel information using tracking number.
+                    # if verified that this locker is the one that the parcel is supposed to be delivered to, measure dimensions.
+                print(f"[MAIN] Taking object dimensions...")
                 print(Dimtaker.take_dimension_scale(img, full_distance=Dimtaker.DISTANCE_FULL))
+                    # for available lockers in the list, run through the dimension comparing algorithm.
+                        # if none of the lockers are suitable, quit.
+                        # else, send unlock command.
+                        # wait for button press
+                        # send lock command.
+                        # of course, report to the webserver.
             else:
                 print(f"[MAIN] QR information not found!")
             print("[MAIN] Operation complete. Resetting...")
