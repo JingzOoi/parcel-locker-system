@@ -10,8 +10,8 @@ class ParcelForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['destination_locker'].widget.attrs.update({'class': 'form-select'})
-        self.fields['tracking_number'].widget.attrs.update({'class': 'form-control'})
+        self.fields['destination_locker'].widget.attrs.update({'class': 'form-select m-2'})
+        self.fields['tracking_number'].widget.attrs.update({'class': 'form-control m-2'})
 
 # notes on styling
     #     class CommentForm(forms.ModelForm):
