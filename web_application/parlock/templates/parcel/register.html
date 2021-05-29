@@ -1,35 +1,48 @@
 {% extends "base.html" %}
 
+
+
+{% block title %}
+Register Parcel
+{% endblock title %}
+
 {% block content %}
 
-
-<h1>Register parcel</h1>
-
 {% if form.errors %}
-    
-    <div class="flex w-full max-w-sm mx-auto overflow-hidden bg-white rounded-lg shadow-md dark:bg-gray-800 mb-7">
-        <div class="flex items-center justify-center w-12 bg-red-500">
-            <svg class="w-6 h-6 text-white fill-current" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 3.36667C10.8167 3.36667 3.3667 10.8167 3.3667 20C3.3667 29.1833 10.8167 36.6333 20 36.6333C29.1834 36.6333 36.6334 29.1833 36.6334 20C36.6334 10.8167 29.1834 3.36667 20 3.36667ZM19.1334 33.3333V22.9H13.3334L21.6667 6.66667V17.1H27.25L19.1334 33.3333Z"/>
-            </svg>
-        </div>
-        
-        <div class="px-4 py-2 -mx-3">
-            <div class="mx-3">
-                <span class="font-semibold text-red-500 dark:text-red-400">Error</span>
-                <p class="text-sm text-gray-600 dark:text-gray-200">Cannot Add Parcel!</p>
+
+<div class="alert alert-dismissible alert-danger px-5">
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <strong>The following few items need to be reviewed:</strong>
+
+    {% for field in form %}
+
+    {% for error in field.errors %}
+    <li>{{ error|escape }}</li>
+
+    {% endfor %}
+
+    {% endfor %}
+
+</div>
+
+{% endif %}
+
+<div class="row justify-content-center" style="background-color:rgb(242, 242, 238);">
+    <div class="col-md-7 col-lg-5">
+        <div class="wrap">
+            <div class="login-wrap p-4 p-md-5">
+                <div class="d-flex">
+                    <div class="w-100">
+                        <h3 class="mb-4">Register Parcel</h3>
+                    </div>
+                </div>
+                <form method="post" action="{% url 'parcel-register' %}">
+                    {% csrf_token %}
+                    {{form}}
+                    <input type="submit" class="form-control btn btn-primary rounded submit px-3" value="Log In">
+                </form>
             </div>
         </div>
     </div>
-
-        
-{% endif %}
-<section class="flex w-full max-w-sm mx-auto overflow-hidden bg-white rounded-lg shadow-md dark:bg-gray-800 mb-7">
-
-<form method="post" action="{% url 'parcel-register' %}">
-{% csrf_token %}
-{{form}}
-<input type="submit" class="btn btn-primary" value="Register" />
-</form>
-</section>
+</div>
 {% endblock content %}

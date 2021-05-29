@@ -31,23 +31,26 @@ User Login
                     <div class="w-100">
                     </div>
                 </div>
-                <form action="POST" class="signin-form" action="{% url 'login' %}">
+                <form method="POST" class="signin-form" action="{% url 'login' %}">
                     {% csrf_token %}
                     <div class="form-group">
-                        <label for="exampleInputEmail1" class="form-label mt-4">Email address</label>
-                        <input type="text" class="form-control" id="inputUsername" aria-describedby="emailHelp"
-                            placeholder="Enter username">
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="inputUsername" aria-describedby="username"
+                                name="username" placeholder="Enter username" value="{{username}}" required="">
+                            <label for="inputUsername">Username</label>
+                        </div>
+                        <div class="form-floating">
+                            <input type="password" class="form-control" id="inputPassword" name="password"
+                                placeholder="Password" value="{{password}}" required="">
+                            <label for="inputPassword">Password</label>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="exampleInputPassword1" class="form-label mt-4">Password</label>
-                        <input type="password" class="form-control" id="exampleInputPassword1" placeholder="Password">
-                    </div>
+
                     <br>
                     <div class="form-group">
-                        <button type="submit" class="form-control btn btn-primary rounded submit px-3">Log In</button>
+                        <input type="submit" class="form-control btn btn-primary rounded submit px-3" value="Log In">
                     </div>
                     <div class="form-group d-md-flex">
-
                         <div class="w-50 text-md-right">
                             <a href="#">Forgot Password</a>
                         </div>

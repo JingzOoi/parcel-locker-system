@@ -1,47 +1,93 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+
 
 {% block title %}
-Parcel Home
+My Parcels
 {% endblock title %}
+
+
 
 {% block content %}
 
-<section class="p-8 sm:px-80">
-    <a href="{% url 'parcel-register' %}" class="flex items-center px-2 py-2 font-medium tracking-wide text-white capitalize transition-colors duration-200 transform bg-green-600 rounded-md dark:bg-gray-800 hover:bg-green-500 dark:hover:bg-gray-700 focus:outline-none focus:bg-green-500 dark:focus:bg-gray-700">
+<div class="row justify-content-center" style="background-color:rgb(242, 242, 238);">
+  <div class="col-md-7 col-lg-5">
+    <div class="wrap">
+      <div class="login-wrap p-4 p-md-5">
+        <div class="d-flex">
+          <div class="w-100">
+            <h3 class="mb-4">My Parcels</h3>
+          </div>
+        </div>
 
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
-        </svg>
-        <span class="mx-1">Register Parcel</span>
-    </a>
+        <ul class="nav nav-tabs">
+          <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#inprogress">In Progress</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#completed">Completed</a>
+          </li>
+        </ul>
+        <div id="myTabContent" class="tab-content mt-3">
+          <div class="tab-pane fade active show" id="inprogress">
 
-</section>
+            {% for parcel in in_progress %}
+            <div class="card mb-3">
+              <h3 class="card-header">{{parcel.tracking_number}}</h3>
+              <div class="card-body">
+                <h5 class="card-title">Status: <span
+                    class="badge rounded-pill bg-info">{{parcel.last_seen_activity.get_type_str}}</span></h5>
+                <h6 class="card-subtitle text-muted">Last Updated: {{parcel.last_seen_activity.datetime}}</h6>
+              </div>
+              <div class="card-body">
+                <p class="card-text">Destination: {{parcel.destination_locker}}</p>
+                <p class="card-text">Address: {{parcel.destination_locker.address}}</p>
+              </div>
+              <div class="card-body">
+                <a href="#" class="btn btn-outline-primary card-link">Withdraw</a>
+                <a href="{% url 'parcel-detail' parcel_id=parcel.id %}" class="btn btn-outline-info card-link">View
+                  Details</a>
+              </div>
+              <div class="card-footer text-muted">
+                Internal ID: {{parcel.id}}
+              </div>
+            </div>
+
+            {% endfor %}
 
 
-<section class="p-2 bg-white">
+          </div>
+          <div class="tab-pane fade" id="completed">
+            {% for parcel in completed %}
+            <div class="card mb-3">
+              <h3 class="card-header">{{parcel.tracking_number}}</h3>
+              <div class="card-body">
+                <h5 class="card-title">Status: <span
+                    class="badge rounded-pill bg-info">{{parcel.last_seen_activity.get_type_str}}</span></h5>
+                <h6 class="card-subtitle text-muted">Last Updated: {{parcel.last_seen_activity.datetime}}</h6>
+              </div>
+              <div class="card-body">
+                <p class="card-text">Destination: {{parcel.destination_locker}}</p>
+                <p class="card-text">Address: {{parcel.destination_locker.address}}</p>
+              </div>
+              <div class="card-body">
+                <a href="#" class="btn btn-outline-primary card-link">Withdraw</a>
+                <a href="{% url 'parcel-detail' parcel_id=parcel.id %}" class="btn btn-outline-info card-link">View
+                  Details</a>
+              </div>
+              <div class="card-footer text-muted">
+                Internal ID: {{parcel.id}}
+              </div>
+            </div>
 
-<table class="table table-hover">
-  <thead>
-    <tr>
-      <th scope="col">ID</th>
-      <th scope="col">Tracking Number</th>
-      <th scope="col">Destination</th>
-      <th scope="col">Latest Activity</th>
-      <th scope="col">Details</th>
-    </tr>
-  </thead>
-{% for parcel in parcel_list %}
-    <tr>
-      <th scope="row" class="align-middle">{{parcel.id}}</th>
-      <td class="align-middle">{{parcel.tracking_number}}</td>
-      <td class="align-middle">{{parcel.destination_locker}}</td>
-      <td class="align-middle">pa</td>
-      <td class="align-middle"><a class="btn btn-info" href="{% url 'parcel-detail' parcel_id=parcel.id %}">View</a></td>
-    </tr>
-{% endfor %}
-</table>
+            {% endfor %}
+          </div>
 
+        </div>
 
-</section>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 {% endblock content %}
