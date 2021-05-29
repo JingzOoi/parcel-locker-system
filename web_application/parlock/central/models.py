@@ -82,6 +82,9 @@ class LockerBase(models.Model):
     def __str__(self):
         return self.name
 
+    def address(self):
+        return f"{self.street_address}, {self.zip_code} {self.city}, {self.State(self.state).label}"
+
 
 class LockerUnit(models.Model):
     """A logical representation of a locker unit. Locker units don't have the ability to talk to the server directly. Is dimension."""
@@ -124,6 +127,12 @@ class Parcel(models.Model):
     def __repr__(self) -> str:
         return f"Parcel(recipient={self.recipient.username}, destination_locker={self.destination_locker.name}, tracking_number={self.tracking_number})"
 
+    def last_seen_activity(self):
+        return ParcelActivity.objects.filter(parcel=self).latest("datetime")
+
+    def activities(self):
+        return [pa for pa in ParcelActivity.objects.filter(parcel=self).order_by("-datetime")]
+
 
 class ParcelActivity(models.Model):
     """
@@ -156,10 +165,13 @@ class ParcelActivity(models.Model):
         WITHDRAW = 7, "WITHDRAW"  # associated with LOCK and UNLOCK
 
     parcel = models.ForeignKey(Parcel, on_delete=models.CASCADE)
-    _type = models.PositiveSmallIntegerField(choices=ActivityType.choices, null=False)
+    type = models.PositiveSmallIntegerField(choices=ActivityType.choices, null=False)
     datetime = models.DateTimeField(auto_now_add=True)
     # image = models.ImageField() # still hesitating about adding this one, it doesn't actually add real value, just ease of tracing back to troubleshoot. maybe in future versions.
     # is the qr data to verify when user tries to withdraw. should be the hash of the parcel added with the current timestamp. (planned to be implemented like this)
     qr_data = models.IntegerField(null=True, unique=True)
 
     associated_locker_activity = models.ForeignKey(LockerActivity, null=True, on_delete=models.CASCADE)
+
+    def get_type_str(self):
+        return self.ActivityType(self.type).label
