@@ -31,6 +31,10 @@ LOGGER.info("Starting up...")
 LOGGER.info("Initializing height sensor...")
 Dimtaker.DISTANCE_FULL = Dimtaker.take_distance(init=True)
 LOGGER.info(f"Initializing height sensor done: {Dimtaker.DISTANCE_FULL:.4f}")
+
+# initialize and inform webserver that the device is online
+
+# read from config
 starting_url = f"{CONFIG['webserver_address']}/api/locker/{CONFIG['_id']}"
 LOGGER.info(f"[Initializing webserver address: {starting_url}")
 with requests.get(f"{starting_url}/0/activity/add/1") as page:
