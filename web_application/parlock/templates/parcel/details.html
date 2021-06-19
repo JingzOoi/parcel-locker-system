@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}
+Parcel Details
+{% endblock title %}
+
+{% block content %}
+
+<h1>{{parcel.tracking_number}}</h1>
+
+
+<div class="list-group">
+    <a href="#" class="list-group-item list-group-item-action flex-column align-items-start active">
+        <div class="d-flex w-100 justify-content-between">
+            <h5 class="mb-1">{{parcel_activity_latest.get_type_str}}</h5>
+            <small>3 days ago</small>
+        </div>
+        <small>Internal ID: {{parcel_activity_latest.id}}</small>
+    </a>
+    {% for pa in parcel_activity_history %}
+    <a href="#" class="list-group-item list-group-item-action flex-column align-items-start active">
+        <div class="d-flex w-100 justify-content-between">
+            <h5 class="mb-1">{{pa.get_type_str}}</h5>
+            <small>3 days ago</small>
+        </div>
+        <small>Internal ID: {{pa.id}}</small>
+    </a>
+    {% endfor %}
+</div>
+
+
+
+{% endblock content %}
