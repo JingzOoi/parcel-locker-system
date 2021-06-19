@@ -136,7 +136,7 @@ class Dimtaker:
         return distance
 
     @staticmethod
-    def take_dimension_scale(img, full_distance=300, draw=False):
+    def take_dimension_scale(img, full_distance=300, height_override: int = None, draw=False):
         """New algorithm that takes depth-of-view into consideration."""
         cnts = Dimtaker.detect_edges(img)
         po_list = [PartialObject(c) for c in cnts]
@@ -146,7 +146,8 @@ class Dimtaker:
         fiducial.actual_width = 24
         # uses a "greedy" filter to get the largest object in the partial object list, ignoring any other stuff such as reflections. if the camera is properly calibrated, this approach shouldn't cause any problems.
         parcel = sorted(po_list, key=lambda po: po.contour_area, reverse=True)[0]
-        height = Dimtaker.take_distance(init=True)
+        height = Dimtaker.take_distance(init=True) if not height_override else height_override
+
         parcel.actual_length = parcel.scale_to_distance(
             parcel.pixel_length,
             height,
@@ -164,6 +165,7 @@ class Dimtaker:
         a_height = full_distance - height
         if draw:
             img_copy = img.copy()
+            fiducial.draw(img_copy)
             parcel.draw(img_copy)
             Imagetaker.save_image(img_copy, "dimension_scale.jpg")
         return {"length": parcel.actual_length, "width": parcel.actual_width, "height": a_height}
