@@ -114,6 +114,9 @@ class Dimtaker:
 
     @staticmethod
     def take_distance(init: bool = False):
+        """
+        Just takes the distance between the sensor and the closest object. Calculate height of object separately.
+        """
         if init:
             GPIO.cleanup()
             GPIO.setmode(GPIO.BCM)
@@ -130,11 +133,11 @@ class Dimtaker:
         sig_time = end-start
 
         distance = sig_time / 0.0000058  # mm
-
         return distance
 
     @staticmethod
-    def take_dimension_scale(img, full_distance=300, draw=False):
+    def take_dimension_scale(img, full_distance=300, height_override: int = None, draw=False):
+        """New algorithm that takes depth-of-view into consideration."""
         cnts = Dimtaker.detect_edges(img)
         po_list = [PartialObject(c) for c in cnts]
         # assumes the partial object on the top left corner is always going to be the fiducial.
@@ -143,7 +146,8 @@ class Dimtaker:
         fiducial.actual_width = 24
         # uses a "greedy" filter to get the largest object in the partial object list, ignoring any other stuff such as reflections. if the camera is properly calibrated, this approach shouldn't cause any problems.
         parcel = sorted(po_list, key=lambda po: po.contour_area, reverse=True)[0]
-        height = Dimtaker.take_distance(init=True)
+        height = Dimtaker.take_distance(init=True) if not height_override else height_override
+
         parcel.actual_length = parcel.scale_to_distance(
             parcel.pixel_length,
             height,
@@ -161,12 +165,14 @@ class Dimtaker:
         a_height = full_distance - height
         if draw:
             img_copy = img.copy()
+            fiducial.draw(img_copy)
             parcel.draw(img_copy)
             Imagetaker.save_image(img_copy, "dimension_scale.jpg")
         return {"length": parcel.actual_length, "width": parcel.actual_width, "height": a_height}
 
     @staticmethod
     def take_dimension_ratio(img, full_distance=300, draw=False):
+        """Uses the original algorithm."""
         cnts = Dimtaker.detect_edges(img)
         po_list = [PartialObject(c) for c in cnts]
         fiducial = po_list.pop(0)
@@ -182,6 +188,30 @@ class Dimtaker:
         height = Dimtaker.take_distance(init=True)
         a_height = full_distance - height
         return {"length": parcel.actual_length, "width": parcel.actual_width, "height": a_height}
+
+    @staticmethod
+    def test_fit(object_1: dict, object_2: dict) -> bool:
+        """
+        Can an object fit into another object?
+        In theory, there are 4 unique orientations for a cuboid. 
+        Object 1 is the parcel, object 2 is the locker unit.
+        This part works by test fitting all the orientations of the parcel one by one. If any of the orientations are smaller than the dimensions of the locker unit, then the system determines it to fit. make the offset to be ~-10%.
+        This uses a stupidly rudimentary approach that does not depend on actual 3D imaging.
+
+        @param object_1 = dictionary that has 3 key-value pairs: length, width, and height.
+        """
+        is_fit = False
+        locker_length, locker_width, locker_height = object_2["length"]*.9, object_2["width"]*.9, object_2["height"]*.9
+        # first of all, determine if length = length, width = width, height = height
+        if object_1["length"] < locker_length and object_1["width"] < locker_width and object_1["height"] < locker_height:
+            is_fit = True
+        elif object_1["width"] < locker_length and object_1["length"] < locker_width and object_1["height"] < locker_height:
+            is_fit = True
+        elif object_1["height"] < locker_length and object_1["width"] < locker_width and object_1["length"] < locker_height:
+            is_fit = True
+        elif object_1["height"] < locker_length and object_1["length"] < locker_width and object_1["width"] < locker_height:
+            is_fit = True
+        return is_fit
 
 
 if __name__ == "__main__":

@@ -8,11 +8,7 @@ class QRtaker:
     def take_qr(img):
         detector = QRCodeDetector()
         data, bbox, _ = detector.detectAndDecode(img)
-        if bbox is not None:
-            return data
-        else:
-            return None
-
+        return data if bbox is not None else None
 
 
 if __name__ == "__main__":

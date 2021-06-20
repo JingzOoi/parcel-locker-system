@@ -1,1 +1,8 @@
 resources
+.venv/
+.vscode/
+logs/
+config
+config/
+test.py/
+*.jpg
