@@ -4,8 +4,68 @@
 Locker Home
 {% endblock title %}
 
+{% block pagetitle %}
+Locker Home
+{% endblock pagetitle %}
+
 {% block content %}
 
 
+{% if user.is_authenticated %}
+
+<div class="card border-primary mb-3">
+    <div class="card-header">
+        Most used
+    </div>
+    <div class="card-body">
+        <h4 class="card-title">
+            {{ most_used.name }}
+        </h4>
+        <p class="card-text">
+            {{ most_used.address }}
+            <input type="hidden" value="{{most_used.address}}" id="locker-{{ locker.id }}">
+        </p><button type="button" onclick="copyText()" class="btn btn-primary">Copy Address</button>
+    </div>
+
+</div>
+{% endif %}
+<br>
+<form class="d-flex" action="{% url 'locker-view' %}" method="POST">
+    {% csrf_token %}
+    <input class="form-control me-sm-2" type="text" name="keyword" placeholder="Search">
+    <button class="btn btn-secondary my-2 my-sm-0" type="submit">Search</button>
+</form>
+<br>
+{% for locker in results %}
+
+<div class="card border-primary mb-3">
+    <div class="card-header">
+        Result
+    </div>
+    <div class="card-body">
+        <h4 class="card-title">
+            {{ locker.name }}
+        </h4>
+        <p class="card-text">
+            {{ locker.address }}
+            <input type="hidden" value="{{locker.address}}" id="locker-{{ locker.id }}">
+        </p><button type="button" onclick="copyText('locker-{{ locker.id }}')" class="btn btn-primary">Copy
+            Address</button>
+    </div>
+
+</div>
+
+{% endfor %}
+
+<script>
+    function copyText(elementid) {
+        console.log(elementid)
+        var Url = document.getElementById(elementid);
+        Url.innerHTML = window.location.href;
+        console.log(Url.innerHTML)
+        Url.select();
+        document.execCommand("copy");
+    }
+</script>
 
 {% endblock content %}

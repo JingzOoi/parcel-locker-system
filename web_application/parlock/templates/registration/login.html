@@ -20,46 +20,43 @@ User Login
 
 {% endif %}
 
-<div class="row justify-content-center" style="background-color:rgb(242, 242, 238);">
-    <div class="col-md-7 col-lg-5">
-        <div class="wrap">
-            <div class="login-wrap p-4 p-md-5">
-                <div class="d-flex">
-                    <div class="w-100">
-                        <h3 class="mb-4">Log In</h3>
-                    </div>
-                    <div class="w-100">
-                    </div>
-                </div>
-                <form method="POST" class="signin-form" action="{% url 'login' %}">
-                    {% csrf_token %}
-                    <div class="form-group">
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="inputUsername" aria-describedby="username"
-                                name="username" placeholder="Enter username" value="{{username}}" required="">
-                            <label for="inputUsername">Username</label>
-                        </div>
-                        <div class="form-floating">
-                            <input type="password" class="form-control" id="inputPassword" name="password"
-                                placeholder="Password" value="{{password}}" required="">
-                            <label for="inputPassword">Password</label>
-                        </div>
-                    </div>
+<div class="wrap">
+    <div class="w-100 col-12">
 
-                    <br>
-                    <div class="form-group">
-                        <input type="submit" class="form-control btn btn-primary rounded submit px-3" value="Log In">
-                    </div>
-                    <div class="form-group d-md-flex">
-                        <div class="w-50 text-md-right">
-                            <a href="#">Forgot Password</a>
-                        </div>
-                    </div>
-                </form>
-                <p class="text-center">Not a member? <a data-toggle="tab" href="#signup">Sign Up</a></p>
+        {% block pagetitle %}
+        Log In
+        {% endblock pagetitle %}
+
+
+        <form method="POST" class="signin-form" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="inputUsername" aria-describedby="username"
+                        name="username" placeholder="Enter username" value="{{username}}" required="">
+                    <label for="inputUsername">Username</label>
+                </div>
+                <div class="form-floating">
+                    <input type="password" class="form-control" id="inputPassword" name="password"
+                        placeholder="Password" value="{{password}}" required="">
+                    <label for="inputPassword">Password</label>
+                </div>
             </div>
-        </div>
+
+            <br>
+            <div class="form-group">
+                <input type="submit" class="form-control btn btn-primary rounded submit px-3" value="Log In">
+            </div>
+            <div class="form-group d-md-flex">
+                <div class="w-50 text-md-right">
+                    <a href="#">Forgot Password</a>
+                </div>
+            </div>
+        </form>
+        <p class="text-center">Not a member? <a data-toggle="tab" href="#signup">Sign Up</a></p>
     </div>
+
+</div>
 </div>
 
 

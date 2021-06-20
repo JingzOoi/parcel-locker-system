@@ -5,33 +5,25 @@
 Home
 {% endblock title %}
 
+{% block pagetitle %}
+
+{% if user.is_authenticated %}
+Welcome back, {{ user.username }}
+{% else %}
+You are not logged in. <a href="{% url 'login' %}">Log in</a> or sign up to continue.
+
+{% endif %}
+
+{% endblock pagetitle %}
 
 
 {% block content %}
 
-
-{% if not user.is_authenticated %}
-
-<div class="page-header" id="banner">
-    <div class="row">
-        <div class="col-lg-8 col-md-7 col-sm-6">
-            <h1>Parlock Home</h1>
-            <p class="lead">You are not logged in. <a href="{% url 'login' %}">Log in</a> or sign up to continue.</p>
-            <a class="btn btn-lg btn-primary" href="{% url 'login' %}" role="button">Log in</a>
-        </div>
-    </div>
+<div class="d-grid gap-2">
+    <a class="btn btn-lg btn-primary" href="{% url 'parcel' %}" type="button">My parcels</a>
+    <a class="btn btn-lg btn-primary" href="{% url 'parcel-register' %}" type="button">Register new parcel</a>
+    <a class="btn btn-lg btn-primary" href="{% url 'locker-view' %}" type="button">View Lockers</a>
 </div>
-{% else %}
-
-<div class="page-header" id="banner">
-    <div class="row">
-        <div class="col-lg-8 col-md-7 col-sm-6">
-            <h1>Welcome back, {{ user.username }}</h1>
-        </div>
-    </div>
-</div>
-
-{% endif %}
 
 
 {% endblock content %}

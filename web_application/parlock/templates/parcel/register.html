@@ -6,6 +6,12 @@
 Register Parcel
 {% endblock title %}
 
+
+{% block pagetitle %}
+Register Parcel
+{% endblock pagetitle %}
+
+
 {% block content %}
 
 {% if form.errors %}
@@ -30,18 +36,11 @@ Register Parcel
 <div class="row justify-content-center" style="background-color:rgb(242, 242, 238);">
     <div class="col-md-7 col-lg-5">
         <div class="wrap">
-            <div class="login-wrap p-4 p-md-5">
-                <div class="d-flex">
-                    <div class="w-100">
-                        <h3 class="mb-4">Register Parcel</h3>
-                    </div>
-                </div>
-                <form method="post" action="{% url 'parcel-register' %}">
-                    {% csrf_token %}
-                    {{form}}
-                    <input type="submit" class="form-control btn btn-primary rounded submit px-3" value="Log In">
-                </form>
-            </div>
+            <form method="post" action="{% url 'parcel-register' %}">
+                {% csrf_token %}
+                {{form}}
+                <input type="submit" class="form-control btn btn-primary rounded submit px-3" value="Register">
+            </form>
         </div>
     </div>
 </div>

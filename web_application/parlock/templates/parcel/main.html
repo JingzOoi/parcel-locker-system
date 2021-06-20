@@ -7,87 +7,89 @@ My Parcels
 
 
 
+{% block pagetitle %}
+My Parcels
+{% endblock pagetitle %}
+
+
+
 {% block content %}
 
-<div class="row justify-content-center" style="background-color:rgb(242, 242, 238);">
-  <div class="col-md-7 col-lg-5">
-    <div class="wrap">
-      <div class="login-wrap p-4 p-md-5">
-        <div class="d-flex">
-          <div class="w-100">
-            <h3 class="mb-4">My Parcels</h3>
+<div class="wrap">
+  <div class="w-100 col-12">
+
+    <ul class="nav nav-tabs">
+      <li class="nav-item">
+        <a class="nav-link active" data-bs-toggle="tab" href="#inprogress">In Progress</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#completed">Completed</a>
+      </li>
+    </ul>
+    <div id="myTabContent" class="tab-content mt-3">
+      <div class="tab-pane fade active show" id="inprogress">
+
+        {% for parcel in in_progress %}
+        <div class="card mb-3">
+          <h3 class="card-header">{{parcel.tracking_number}}</h3>
+          <div class="card-body">
+            <h5 class="card-title">Status: <span
+                class="badge rounded-pill bg-info">{{parcel.last_seen_activity.get_type_str}}</span></h5>
+            <h6 class="card-subtitle text-muted">Last Updated: {{parcel.last_seen_activity.datetime}}</h6>
+          </div>
+          <div class="card-body">
+            <p class="card-text">Destination: {{parcel.destination_locker}}</p>
+            <p class="card-text">Address: {{parcel.destination_locker.address}}</p>
+          </div>
+          <div class="card-body">
+
+            {% if parcel.can_be_withdrawn%} <a href="#" class="btn btn-outline-primary card-link">
+              Withdraw</a>
+            {% endif %}
+
+            <a href="{% url 'parcel-detail' parcel_id=parcel.id %}" class="btn btn-outline-info card-link">View
+              Details</a>
+            <a href="#" class="btn btn-outline-danger card-link">Cancel</a>
+          </div>
+          <div class="card-footer text-muted">
+            Internal ID: {{parcel.id}}
           </div>
         </div>
 
-        <ul class="nav nav-tabs">
-          <li class="nav-item">
-            <a class="nav-link active" data-bs-toggle="tab" href="#inprogress">In Progress</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" data-bs-toggle="tab" href="#completed">Completed</a>
-          </li>
-        </ul>
-        <div id="myTabContent" class="tab-content mt-3">
-          <div class="tab-pane fade active show" id="inprogress">
+        {% endfor %}
 
-            {% for parcel in in_progress %}
-            <div class="card mb-3">
-              <h3 class="card-header">{{parcel.tracking_number}}</h3>
-              <div class="card-body">
-                <h5 class="card-title">Status: <span
-                    class="badge rounded-pill bg-info">{{parcel.last_seen_activity.get_type_str}}</span></h5>
-                <h6 class="card-subtitle text-muted">Last Updated: {{parcel.last_seen_activity.datetime}}</h6>
-              </div>
-              <div class="card-body">
-                <p class="card-text">Destination: {{parcel.destination_locker}}</p>
-                <p class="card-text">Address: {{parcel.destination_locker.address}}</p>
-              </div>
-              <div class="card-body">
-                <a href="#" class="btn btn-outline-primary card-link">Withdraw</a>
-                <a href="{% url 'parcel-detail' parcel_id=parcel.id %}" class="btn btn-outline-info card-link">View
-                  Details</a>
-              </div>
-              <div class="card-footer text-muted">
-                Internal ID: {{parcel.id}}
-              </div>
-            </div>
-
-            {% endfor %}
-
-
-          </div>
-          <div class="tab-pane fade" id="completed">
-            {% for parcel in completed %}
-            <div class="card mb-3">
-              <h3 class="card-header">{{parcel.tracking_number}}</h3>
-              <div class="card-body">
-                <h5 class="card-title">Status: <span
-                    class="badge rounded-pill bg-info">{{parcel.last_seen_activity.get_type_str}}</span></h5>
-                <h6 class="card-subtitle text-muted">Last Updated: {{parcel.last_seen_activity.datetime}}</h6>
-              </div>
-              <div class="card-body">
-                <p class="card-text">Destination: {{parcel.destination_locker}}</p>
-                <p class="card-text">Address: {{parcel.destination_locker.address}}</p>
-              </div>
-              <div class="card-body">
-                <a href="#" class="btn btn-outline-primary card-link">Withdraw</a>
-                <a href="{% url 'parcel-detail' parcel_id=parcel.id %}" class="btn btn-outline-info card-link">View
-                  Details</a>
-              </div>
-              <div class="card-footer text-muted">
-                Internal ID: {{parcel.id}}
-              </div>
-            </div>
-
-            {% endfor %}
-          </div>
-
-        </div>
 
       </div>
+      <div class="tab-pane fade" id="completed">
+        {% for parcel in completed %}
+        <div class="card mb-3">
+          <h3 class="card-header">{{parcel.tracking_number}}</h3>
+          <div class="card-body">
+            <h5 class="card-title">Status: <span
+                class="badge rounded-pill bg-info">{{parcel.last_seen_activity.get_type_str}}</span></h5>
+            <h6 class="card-subtitle text-muted">Last Updated: {{parcel.last_seen_activity.datetime}}</h6>
+          </div>
+          <div class="card-body">
+            <p class="card-text">Destination: {{parcel.destination_locker}}</p>
+            <p class="card-text">Address: {{parcel.destination_locker.address}}</p>
+          </div>
+          <div class="card-body">
+            <a href="{% url 'parcel-detail' parcel_id=parcel.id %}" class="btn btn-outline-info card-link">View
+              Details</a>
+          </div>
+          <div class="card-footer text-muted">
+            Internal ID: {{parcel.id}}
+          </div>
+        </div>
+
+        {% endfor %}
+      </div>
+
     </div>
+
   </div>
 </div>
+
 
 
 {% endblock content %}

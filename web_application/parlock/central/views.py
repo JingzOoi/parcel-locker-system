@@ -1,9 +1,11 @@
 from django import http
 from django.http.response import HttpResponse
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from .models import LockerBase, Parcel, ParcelActivity
 from .forms import ParcelForm
 from datetime import datetime
+from django.contrib.postgres.search import SearchVector
 # Create your views here.
 
 
@@ -13,8 +15,8 @@ def index(request):
     else:
         return HttpResponse(f"you are logged in as {request.user.username}. <a href='logout/'>Logout</a>")
 
-
 # home view
+
 
 def home(request):
     context_dict = {}
@@ -34,9 +36,8 @@ def parcel(request):
         "in_progress": [],
         "completed": []
     }
-    parcel_qs = Parcel.objects.filter(recipient=request.user)
-    for parcel in parcel_qs:
-        if parcel.last_seen_activity().type == 7:
+    for parcel in request.user.parcels():
+        if parcel.last_seen_activity().type in (7, 8):
             context_dict["completed"].append(parcel)
         else:
             context_dict["in_progress"].append(parcel)
@@ -48,7 +49,8 @@ def parcel(request):
 def parcel_details(request, parcel_id):
     context_dict = {}
     parcel = get_object_or_404(Parcel, id=parcel_id)
-    assert parcel.recipient == request.user, "You are FORBIDDEN from performing this action. FORBIDDEN"
+    if parcel.recipient != request.user:
+        raise PermissionDenied
     parcel_activity = parcel.activities()
     context_dict["parcel_activity_latest"] = parcel_activity.pop(0)
     context_dict["parcel_activity_history"] = parcel_activity
@@ -64,8 +66,8 @@ def add_parcel_action(request):
             new_parcel = f.save(commit=False)
             new_parcel.recipient = request.user
             new_parcel.save()
-            ParcelActivity(parcel=new_parcel, _type=ParcelActivity.ActivityType.REGISTER.value, qr_data=None, associated_locker_activity=None).save()
-            return http.HttpResponseRedirect("profile/")
+            ParcelActivity(parcel=new_parcel, type=ParcelActivity.ActivityType.REGISTER.value, qr_data=None, associated_locker_activity=None).save()
+            return http.HttpResponseRedirect("parcel/")
         else:
             context_dict["form"] = f
     else:
@@ -74,4 +76,12 @@ def add_parcel_action(request):
 
 
 def lockers(request):
-    return HttpResponse("lockers")
+    context_dict = {}
+    if request.user.is_authenticated:
+        most_used = [parcel.destination_locker for parcel in request.user.parcels()]
+        context_dict["most_used"] = max(set(most_used), key=most_used.count)
+    if request.method == "POST":
+        kw = request.POST.get("keyword", None)
+        if kw:
+            context_dict["results"] = [lb for lb in LockerBase.objects.annotate(search=SearchVector("name", "street_address", "city", "state", "zip_code")).filter(search=kw)]
+    return render(request, "locker/main.html", context=context_dict)
