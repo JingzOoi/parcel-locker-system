@@ -53,6 +53,12 @@ class User(AbstractBaseUser):
     def is_staff(self):
         return self.is_admin
 
+    def parcels(self):
+        self.parcel_set
+        p_list = [parcel for parcel in Parcel.objects.filter(recipient=self)]
+        p_list.sort(key=lambda p: p.last_seen_activity().datetime, reverse=True)
+        return p_list
+
 
 class LockerBase(models.Model):
     """A logical representation of a locker base inside the system. A locker base can have many locker units. Is dimension."""
@@ -82,8 +88,12 @@ class LockerBase(models.Model):
     def __str__(self):
         return self.name
 
+    @property
     def address(self):
         return f"{self.street_address}, {self.zip_code} {self.city}, {self.State(self.state).label}"
+
+    def nearby(self):
+        return [lb for lb in LockerBase.objects.filter(zip_code=self.zip_code)[:3]]
 
 
 class LockerUnit(models.Model):
@@ -114,7 +124,7 @@ class LockerActivity(models.Model):
 
     locker_base = models.ForeignKey(LockerBase, null=False, on_delete=models.CASCADE)
     locker_unit = models.ForeignKey(LockerUnit, null=True, on_delete=models.CASCADE)  # important! not every activity has to involve a locker unit!
-    _type = models.PositiveSmallIntegerField(choices=ActivityType.choices, null=False)
+    type = models.PositiveSmallIntegerField(choices=ActivityType.choices, null=False)
     datetime = models.DateTimeField(auto_now_add=True)
 
 
@@ -133,6 +143,9 @@ class Parcel(models.Model):
     def activities(self):
         return [pa for pa in ParcelActivity.objects.filter(parcel=self).order_by("-datetime")]
 
+    def can_be_withdrawn(self) -> bool:
+        return 4 <= self.last_seen_activity().type < 7
+
 
 class ParcelActivity(models.Model):
     """
@@ -143,6 +156,7 @@ class ParcelActivity(models.Model):
         - deposit
         - Withdrawal request (when user requests for qr code for withdrawal)
         - Withdrawal (after confirmation from locker base)
+        - Cancellation (soft delete)
 
     associated_locker_activity: some parcel activities can be mapped to be related with certain locker activities, that's how the system knows which locker is associated with each parcel. 
         - when the parcel qr code is scanned, an entry is created in LockerActivity to scan. the same code is queried from Parcel.tracking_number to see if it is a valid parcel. if yes, then a ParcelActivity entry is added with type Arrival, with the LockerActivity entry linked in the associated_locker_activity field
@@ -163,6 +177,7 @@ class ParcelActivity(models.Model):
         WITHDRAWAPP = 5, "WITHDRAWAPP"  # added when user clicks on the option to generate qr code, only type that uses qr_data
         WITHDRAWREQ = 6, "WITHDRAWREQ"  # associated with SCANQRRECIPIENT
         WITHDRAW = 7, "WITHDRAW"  # associated with LOCK and UNLOCK
+        CANCEL = 8, "CANCEL"  # a label that shows the parcel as not being able to arrive, tracking number is *not* released
 
     parcel = models.ForeignKey(Parcel, on_delete=models.CASCADE)
     type = models.PositiveSmallIntegerField(choices=ActivityType.choices, null=False)
