@@ -66,7 +66,7 @@ def add_parcel_action(request):
             new_parcel = f.save(commit=False)
             new_parcel.recipient = request.user
             new_parcel.save()
-            ParcelActivity(parcel=new_parcel, type=ParcelActivity.ActivityType.REGISTER.value, qr_data=None, associated_locker_activity=None).save()
+            ParcelActivity(parcel=new_parcel, type=ParcelActivity.ActivityType.REGISTER.value, associated_locker_activity=None).save()
             return http.HttpResponseRedirect("parcel/")
         else:
             context_dict["form"] = f
