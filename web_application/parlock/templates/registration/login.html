@@ -8,6 +8,9 @@ User Login
 {% endblock title %}
 
 
+{% block pagetitle %}
+Log In
+{% endblock pagetitle %}
 {% block content %}
 
 {% if form.errors %}
@@ -23,9 +26,6 @@ User Login
 <div class="wrap">
     <div class="w-100 col-12">
 
-        {% block pagetitle %}
-        Log In
-        {% endblock pagetitle %}
 
 
         <form method="POST" class="signin-form" action="{% url 'login' %}">

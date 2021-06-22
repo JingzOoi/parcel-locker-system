@@ -23,6 +23,12 @@ You are not logged in. <a href="{% url 'login' %}">Log in</a> or sign up to cont
     <a class="btn btn-lg btn-primary" href="{% url 'parcel' %}" type="button">My parcels</a>
     <a class="btn btn-lg btn-primary" href="{% url 'parcel-register' %}" type="button">Register new parcel</a>
     <a class="btn btn-lg btn-primary" href="{% url 'locker-view' %}" type="button">View Lockers</a>
+
+    {% if user.is_admin %}
+
+    <a class="btn btn-lg btn-primary" href="/admin" type="button">Admin View</a>
+    {% endif %}
+
 </div>
 
 

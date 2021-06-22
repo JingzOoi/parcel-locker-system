@@ -29,6 +29,10 @@ My Parcels
     <div id="myTabContent" class="tab-content mt-3">
       <div class="tab-pane fade active show" id="inprogress">
 
+        {% if in_progress %}
+
+
+
         {% for parcel in in_progress %}
         <div class="card mb-3">
           <h3 class="card-header">{{parcel.tracking_number}}</h3>
@@ -58,9 +62,21 @@ My Parcels
 
         {% endfor %}
 
+        {% else %}
+
+        <h3>Nothing here! </h3>
+        <p class="lead"><a href="{% url 'parcel-register' %}">Register a parcel</a> and see it appear here!</p>
+
+        {% endif %}
+
+
 
       </div>
       <div class="tab-pane fade" id="completed">
+        {% if completed %}
+
+
+
         {% for parcel in completed %}
         <div class="card mb-3">
           <h3 class="card-header">{{parcel.tracking_number}}</h3>
@@ -83,6 +99,11 @@ My Parcels
         </div>
 
         {% endfor %}
+        {% else %}
+        <h3>Nothing here! </h3>
+        <p class="lead"><a href="{% url 'parcel-register' %}">Register a parcel</a> and see it appear here!</p>
+
+        {% endif %}
       </div>
 
     </div>
