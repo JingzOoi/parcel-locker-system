@@ -21,10 +21,10 @@ Locker Home
         <h4 class="card-title">
             {{ most_used.name }}
         </h4>
-        <p class="card-text">
-            {{ most_used.address }}
-            <input type="hidden" value="{{most_used.address}}" id="locker-{{ locker.id }}">
-        </p><button type="button" onclick="copyText()" class="btn btn-primary">Copy Address</button>
+        <p class="card-text">{{ most_used.address }}</p><button type="button" class="btn btn-primary btn-copy">Copy
+            Address</button>
+        <a href="{% url 'parcel-register' %}?locker={{ most_used.id }}" class="btn btn-secondary">Register
+            Parcel</a>
     </div>
 
 </div>
@@ -46,11 +46,11 @@ Locker Home
         <h4 class="card-title">
             {{ locker.name }}
         </h4>
-        <p class="card-text">
-            {{ locker.address }}
-            <input type="hidden" value="{{locker.address}}" id="locker-{{ locker.id }}">
-        </p><button type="button" onclick="copyText('locker-{{ locker.id }}')" class="btn btn-primary">Copy
-            Address</button>
+        <p class="card-text">{{ locker.address }}</p>
+        <button type="button" class="btn btn-primary btn-copy">Copy
+            Address</button><a href="{% url 'parcel-register' %}?locker={{ most_used.id }}"
+            class="btn btn-secondary">Register
+            Parcel</a>
     </div>
 
 </div>
@@ -58,14 +58,15 @@ Locker Home
 {% endfor %}
 
 <script>
-    function copyText(elementid) {
-        console.log(elementid)
-        var Url = document.getElementById(elementid);
-        Url.innerHTML = window.location.href;
-        console.log(Url.innerHTML)
-        Url.select();
+
+    $(".btn-copy").click(function () {
+        value = $(this).siblings("p").html();
+        var $temp = $("<input>");
+        $("body").append($temp);
+        $temp.val(value).select();
         document.execCommand("copy");
-    }
+        $temp.remove();
+    })
 </script>
 
 {% endblock content %}

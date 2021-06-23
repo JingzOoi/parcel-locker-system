@@ -20,13 +20,85 @@ You are not logged in. <a href="{% url 'login' %}">Log in</a> or sign up to cont
 {% block content %}
 
 <div class="d-grid gap-2">
+    {% if user.is_authenticated %}
+
     <a class="btn btn-lg btn-primary" href="{% url 'parcel' %}" type="button">My parcels</a>
     <a class="btn btn-lg btn-primary" href="{% url 'parcel-register' %}" type="button">Register new parcel</a>
     <a class="btn btn-lg btn-primary" href="{% url 'locker-view' %}" type="button">View Lockers</a>
+    {% endif %}
 
     {% if user.is_admin %}
 
     <a class="btn btn-lg btn-primary" href="/admin" type="button">Admin View</a>
+    <hr>
+    <h3>Latest Activities</h3>
+    <ul class="nav nav-tabs">
+        <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#parcel">Parcel</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#locker">Locker</a>
+        </li>
+    </ul>
+    <div id="myTabContent" class="tab-content">
+        <div class="tab-pane fade show active" id="parcel">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Parcel</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Datetime</th>
+                        <th scope="col">Locker Activity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pa in latest_pa %}
+                    <tr>
+                        <th scope="row">{{ pa.id }}</th>
+                        <td>{{ pa.parcel.id }}</td>
+                        <td>{{ pa.get_type_str }}</td>
+                        <td>{{ pa.datetime }}</td>
+                        <td>{{ pa.associated_locker_activity.id }}</td>
+                    </tr>
+                    {% endfor %}
+
+                </tbody>
+            </table>
+        </div>
+        <div class="tab-pane fade" id="locker">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col">ID</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Datetime</th>
+                        <th scope="col">Unit</th>
+                        <th scope="col">Parcel Activity</th>
+                        <th scope="col">Parcel</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for la in latest_la %}
+                    <tr>
+                        <th scope="row">{{ la.id }}</th>
+                        <td>{{ la.locker_base }}</td>
+                        <td>{{ la.get_type_str }}</td>
+                        <td>{{ la.datetime }}</td>
+                        <td>{{ la.locker_unit }}</td>
+                        <td>{{ la.associated_parcel_activity }}</td>
+                        <td>{{ la.associated_parcel }}</td>
+                    </tr>
+                    {% endfor %}
+
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+
     {% endif %}
 
 </div>
