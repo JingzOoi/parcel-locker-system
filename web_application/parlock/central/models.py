@@ -3,6 +3,8 @@ from django.db import models
 from django.contrib.auth.models import (
     BaseUserManager, AbstractBaseUser
 )
+import secrets
+import string
 
 
 class UserManager(BaseUserManager):
@@ -70,6 +72,9 @@ class LockerUnit(models.Model):
     def __repr__(self):
         return f"LockerUnit(id={self.id}, length={self.length}, width={self.width}, height={self.height})"
 
+    def __str__(self):
+        return f"{self.id}"
+
 
 class LockerBase(models.Model):
     """A logical representation of a locker base inside the system. A locker base can have many locker units. Is dimension."""
@@ -119,6 +124,22 @@ class LockerBase(models.Model):
         la.save()
         return la
 
+    @staticmethod
+    def generate_new_v_code():
+        a_list = string.ascii_letters + string.digits + string.punctuation
+        v_code = ''.join(secrets.choice(a_list) for i in range(12))
+        return v_code
+
+    def change_v_code(self):
+        new_v_code = LockerBase.generate_new_v_code()
+        if new_v_code != self.verification_code:
+            self.verification_code = new_v_code
+            self.save()
+            la = self.add_activity(activity_type=LockerActivity.ActivityType.CHANGE_V_CODE, locker_unit=None)
+            return la
+        else:
+            self.change_v_code()
+
 
 class LockerActivity(models.Model):
     """
@@ -138,6 +159,7 @@ class LockerActivity(models.Model):
         SCANDIM = 6, "SCANDIM"  # reporting the parcel dimensions (or don't)
         UNLOCK = 7, "UNLOCK"  # [UNIT] unit unlock
         LOCK = 8, "LOCK"  # [UNIT] unit lock
+        CHANGE_V_CODE = 9, "CHANGE_V_CODE"
 
     locker_base = models.ForeignKey(LockerBase, null=False, on_delete=models.CASCADE)
     locker_unit = models.ForeignKey(LockerUnit, null=True, on_delete=models.CASCADE)  # important! not every activity has to involve a locker unit!
@@ -146,6 +168,15 @@ class LockerActivity(models.Model):
 
     def __repr__(self) -> str:
         return f"LockerActivity(id={self.id}, locker_base={self.locker_base.name}, locker_unit={self.locker_unit}, type={LockerActivity.ActivityType(self.type).label})"
+
+    def get_type_str(self):
+        return self.ActivityType(self.type).label
+
+    def associated_parcel_activity(self):
+        return ParcelActivity.objects.get(associated_locker_activity=self)
+
+    def associated_parcel(self):
+        return self.associated_parcel_activity().parcel
 
 
 class Parcel(models.Model):
@@ -166,24 +197,31 @@ class Parcel(models.Model):
     def can_be_withdrawn(self) -> bool:
         return 4 <= self.last_seen_activity().type < 7
 
-    def add_activity(self, locker_base: LockerBase, activity_type: int):
+    def add_activity(self, *, locker_base: LockerBase, activity_type: int, locker_unit: LockerUnit = None):
         if locker_base == self.destination_locker:
             try:
                 if activity_type == ParcelActivity.ActivityType.QUERY:
                     # query is associated with scanqrparcel
-                    la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.ONLINE, locker_unit=None)
-                if la:
-                    pa = ParcelActivity(parcel=self, type=activity_type, associated_locker_activity=la)
-                    pa.save()
-                    return True
-                else:
-                    pa = ParcelActivity(parcel=self, type=activity_type, associated_locker_activity=None)
-                    pa.save()
-                    return True
+                    la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.SCANQRPARCEL, locker_unit=None)
+                    la.save()
+
+                elif activity_type == ParcelActivity.ActivityType.CHECKIN:
+                    # query is associated with scanqrparcel
+                    la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.SCANDIM, locker_unit=None)
+                    la.save()
+
+                # if there is a locker activity involved, create object based on the locker activity
+                pa = ParcelActivity(parcel=self, type=activity_type)
+                pa.associated_locker_activity = la if la else None
+                pa.save()
+                return pa
             except:
                 return False
         else:
             return False
+
+    def __str__(self):
+        return str(self.id)
 
 
 class ParcelActivity(models.Model):
@@ -212,11 +250,13 @@ class ParcelActivity(models.Model):
         REGISTER = 1, "REGISTER"  # when the parcel is registered into the system
         QUERY = 2, "QUERY"  # associated with SCANQRPARCEL
         CHECKIN = 3, "CHECKIN"  # associated with SCANDIM
-        DEPOSIT = 4, "DEPOSIT"  # associated with LOCK and UNLOCK
-        WITHDRAWAPP = 5, "WITHDRAWAPP"  # added when user clicks on the option to generate qr code, only type that uses qr_data
-        WITHDRAWREQ = 6, "WITHDRAWREQ"  # associated with SCANQRRECIPIENT
-        WITHDRAW = 7, "WITHDRAW"  # associated with LOCK and UNLOCK
-        CANCEL = 8, "CANCEL"  # a label that shows the parcel as not being able to arrive, tracking number is *not* released
+        DEPOSITREQ = 4, "DEPOSITREQ"  # associated with UNLOCK
+        DEPOSIT = 5, "DEPOSIT"  # associated with LOCK
+        WITHDRAWAPP = 6, "WITHDRAWAPP"  # added when user clicks on the option to generate qr code, only type that uses qr_data
+        WITHDRAWQR = 7, "WITHDRAWQR"  # associated with SCANQRRECIPIENT
+        WITHDRAWREQ = 8, "WITHDRAWREQ"  # associated with UNLOCK
+        WITHDRAW = 9, "WITHDRAW"  # associated with LOCK
+        CANCEL = 10, "CANCEL"  # a label that shows the parcel as not being able to arrive, tracking number is *not* released
 
     parcel = models.ForeignKey(Parcel, on_delete=models.CASCADE)
     type = models.PositiveSmallIntegerField(choices=ActivityType.choices, null=False)
@@ -229,3 +269,6 @@ class ParcelActivity(models.Model):
 
     def get_type_str(self):
         return self.ActivityType(self.type).label
+
+    def __str__(self):
+        return str(self.id)
