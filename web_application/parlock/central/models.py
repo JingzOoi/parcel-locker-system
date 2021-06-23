@@ -195,7 +195,10 @@ class Parcel(models.Model):
         return [pa for pa in ParcelActivity.objects.filter(parcel=self).order_by("-datetime")]
 
     def can_be_withdrawn(self) -> bool:
-        return 4 <= self.last_seen_activity().type < 7
+        return 5 <= self.last_seen_activity().type < 9
+
+    def is_complete(self):
+        return self.last_seen_activity().type in (9, 10)
 
     def add_activity(self, *, locker_base: LockerBase, activity_type: int, locker_unit: LockerUnit = None):
         if locker_base == self.destination_locker:
@@ -208,6 +211,26 @@ class Parcel(models.Model):
                 elif activity_type == ParcelActivity.ActivityType.CHECKIN:
                     # query is associated with scanqrparcel
                     la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.SCANDIM, locker_unit=None)
+                    la.save()
+
+                elif activity_type == ParcelActivity.ActivityType.DEPOSITREQ:
+                    # depositreq is when the locker unit unlocks
+                    la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.UNLOCK, locker_unit=locker_unit)
+                    la.save()
+
+                elif activity_type == ParcelActivity.ActivityType.DEPOSIT:
+                    # deposit is when the locker unit locks
+                    la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.LOCK, locker_unit=locker_unit)
+                    la.save()
+
+                elif activity_type == ParcelActivity.ActivityType.WITHDRAWREQ:
+                    # depositreq is when the locker unit unlocks
+                    la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.UNLOCK, locker_unit=locker_unit)
+                    la.save()
+
+                elif activity_type == ParcelActivity.ActivityType.WITHDRAW:
+                    # deposit is when the locker unit locks
+                    la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.LOCK, locker_unit=locker_unit)
                     la.save()
 
                 # if there is a locker activity involved, create object based on the locker activity

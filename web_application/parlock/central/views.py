@@ -41,7 +41,7 @@ def parcel(request):
         "completed": []
     }
     for parcel in request.user.parcels():
-        if parcel.last_seen_activity().type in (7, 8):
+        if not parcel.is_complete:
             context_dict["completed"].append(parcel)
         else:
             context_dict["in_progress"].append(parcel)
