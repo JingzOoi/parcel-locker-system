@@ -4,8 +4,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_list_or_404, get_object_or_404, render
 from central.models import *
 from django.views.decorators.csrf import csrf_exempt
-import secrets
-import string
+import logging
 
 # Create your views here.
 
@@ -66,11 +65,42 @@ def locker_add_activity(request, locker_id: int, activity_type: str):
                 # is a set of two
                 # UNLOCK - DEPOSIT_REQ if complete=false
                 # LOCK - DEPOSIT if complete=true
-                pass
+                parcel = get_object_or_404(Parcel, tracking_number=request.POST["tn"])
+                lu = get_object_or_404(LockerUnit, pk=request.POST["unit_id"])
+                if "complete" in request.POST:
+                    is_complete = eval(request.POST["complete"])
+                    if isinstance(is_complete, bool) and is_complete:
+                        pa = parcel.add_activity(locker_base=lb, locker_unit=lu, activity_type=ParcelActivity.ActivityType.DEPOSIT)
+                    else:
+                        pa = parcel.add_activity(locker_base=lb, locker_unit=lu, activity_type=ParcelActivity.ActivityType.DEPOSITREQ)
+                    if pa and isinstance(pa, ParcelActivity):
+                        return JsonResponse({"success": True})
+                    else:
+                        return JsonResponse({"success": False})
+                else:
+                    return HttpResponseForbidden()
+
+            elif activity_type == "withdraw":
+                # see above, set of two
+                parcel = get_object_or_404(Parcel, tracking_number=request.POST["tn"])
+                lu = get_object_or_404(LockerUnit, pk=request.POST["unit_id"])
+                if "complete" in request.POST:
+                    is_complete = eval(request.POST["complete"])
+                    if isinstance(is_complete, bool) and is_complete:
+                        pa = parcel.add_activity(locker_base=lb, locker_unit=lu, activity_type=ParcelActivity.ActivityType.WITHDRAW)
+                    else:
+                        pa = parcel.add_activity(locker_base=lb, locker_unit=lu, activity_type=ParcelActivity.ActivityType.WITHDRAWREQ)
+                    if pa and isinstance(pa, ParcelActivity):
+                        return JsonResponse({"success": True})
+                    else:
+                        return JsonResponse({"success": False})
+                else:
+                    return HttpResponseForbidden()
 
             else:
                 return HttpResponseNotFound()
-    except ObjectDoesNotExist:
+    except ObjectDoesNotExist as e:
+        logging.error(e)
         return HttpResponseBadRequest()
     except KeyError:
         return HttpResponseBadRequest()
