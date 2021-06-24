@@ -47,7 +47,8 @@ My Parcels
           </div>
           <div class="card-body">
 
-            {% if parcel.can_be_withdrawn%} <a href="#" class="btn btn-outline-primary card-link">
+            {% if parcel.can_be_withdrawn%} <a href="{% url 'parcel-withdraw' parcel_id=parcel.id %}"
+              class="btn btn-outline-primary card-link">
               Withdraw</a>
             {% endif %}
 

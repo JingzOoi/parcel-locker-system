@@ -12,5 +12,6 @@ urlpatterns = [
     path("lockers/", views.lockers, name="locker-view"),
     path("parcel/", views.parcel, name="parcel"),
     path("parcel/<int:parcel_id>", views.parcel_details, name="parcel-detail"),
+    path("parcel/<int:parcel_id>/withdraw", views.parcel_withdraw_application, name="parcel-withdraw"),
     path("parcel/register/", views.add_parcel_action, name="parcel-register"),
 ]

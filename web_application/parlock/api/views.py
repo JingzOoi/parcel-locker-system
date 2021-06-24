@@ -82,7 +82,7 @@ def locker_add_activity(request, locker_id: int, activity_type: str):
 
             elif activity_type == "withdraw":
                 # see above, set of two
-                parcel = get_object_or_404(Parcel, tracking_number=request.POST["tn"])
+                parcel = Parcel.verify_retrieval_code(qr_data=request.POST["qr_data"])
                 lu = get_object_or_404(LockerUnit, pk=request.POST["unit_id"])
                 if "complete" in request.POST:
                     is_complete = eval(request.POST["complete"])
@@ -96,6 +96,20 @@ def locker_add_activity(request, locker_id: int, activity_type: str):
                         return JsonResponse({"success": False})
                 else:
                     return HttpResponseForbidden()
+
+            elif activity_type == "withdraw-qr":
+                # when the recipient scans qr code
+                p = Parcel.verify_retrieval_code(qr_data=request.POST["qr_data"])
+                if p is None:
+                    return HttpResponseNotFound()
+                elif p is False:
+                    return JsonResponse({"success": False})
+                elif isinstance(p, Parcel):
+                    pa = p.add_activity(locker_base=lb, activity_type=ParcelActivity.ActivityType.WITHDRAWQR)
+                    if pa and isinstance(pa, ParcelActivity):
+                        return JsonResponse({"success": True})
+                    else:
+                        return JsonResponse({"success": False})
 
             else:
                 return HttpResponseNotFound()

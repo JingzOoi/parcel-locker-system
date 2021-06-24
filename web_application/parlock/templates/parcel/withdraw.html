@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Withdraw Parcel
+{% endblock title %}
+
+{% block pagetitle %}
+Withdraw Parcel
+{% endblock pagetitle %}
+
+{% block content %}
+
+<div id="qrcode"></div>
+
+<hr>
+<div class="alert alert-dismissible alert-primary">
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <strong>Heads up!</strong> This QR code is good for the next 15 minutes.
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+    var qrc = new QRCode(document.getElementById("qrcode"), "{{ qr_data }}");
+</script>
+
+{% endblock content %}

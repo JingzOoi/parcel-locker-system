@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 from django.contrib.auth.models import (
@@ -5,6 +6,7 @@ from django.contrib.auth.models import (
 )
 import secrets
 import string
+import logging
 
 
 class UserManager(BaseUserManager):
@@ -197,8 +199,29 @@ class Parcel(models.Model):
     def can_be_withdrawn(self) -> bool:
         return 5 <= self.last_seen_activity().type < 9
 
-    def is_complete(self):
+    def is_complete(self) -> bool:
         return self.last_seen_activity().type in (9, 10)
+
+    def make_retrieval_code(self) -> str:
+        assert self.can_be_withdrawn(), "Cannot be withdrawn!"
+        ts = self.last_seen_activity().datetime.timestamp()
+        return f"withdraw_{self.last_seen_activity().id}_{int(ts)}"
+
+    @staticmethod
+    def verify_retrieval_code(qr_data: str) -> bool:
+        prefix, pa_id, ts = qr_data.lower().split("_", 3)
+        try:
+            pa = ParcelActivity.objects.get(pk=pa_id)
+        except ObjectDoesNotExist:
+            return None
+        tx = datetime.utcnow()
+        tx1 = datetime.utcfromtimestamp(int(ts))
+        duration = (tx - tx1).total_seconds() // 60
+        # check if the duration has been too long since the generation of the qr code
+        if prefix == "withdraw" and pa is not None and duration < 15:
+            return pa.parcel
+        else:
+            return False
 
     def add_activity(self, *, locker_base: LockerBase, activity_type: int, locker_unit: LockerUnit = None):
         if locker_base == self.destination_locker:
@@ -206,31 +229,32 @@ class Parcel(models.Model):
                 if activity_type == ParcelActivity.ActivityType.QUERY:
                     # query is associated with scanqrparcel
                     la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.SCANQRPARCEL, locker_unit=None)
-                    la.save()
 
                 elif activity_type == ParcelActivity.ActivityType.CHECKIN:
                     # query is associated with scanqrparcel
                     la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.SCANDIM, locker_unit=None)
-                    la.save()
 
                 elif activity_type == ParcelActivity.ActivityType.DEPOSITREQ:
                     # depositreq is when the locker unit unlocks
                     la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.UNLOCK, locker_unit=locker_unit)
-                    la.save()
 
                 elif activity_type == ParcelActivity.ActivityType.DEPOSIT:
                     # deposit is when the locker unit locks
                     la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.LOCK, locker_unit=locker_unit)
-                    la.save()
 
                 elif activity_type == ParcelActivity.ActivityType.WITHDRAWREQ:
-                    # depositreq is when the locker unit unlocks
+                    # when the qr is verified and the unit is unlocked
                     la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.UNLOCK, locker_unit=locker_unit)
-                    la.save()
 
                 elif activity_type == ParcelActivity.ActivityType.WITHDRAW:
-                    # deposit is when the locker unit locks
+                    # when the locker unit is locked
                     la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.LOCK, locker_unit=locker_unit)
+
+                elif activity_type == ParcelActivity.ActivityType.WITHDRAWQR:
+                    # when the user scans the qr code with the scanner
+                    la = locker_base.add_activity(activity_type=LockerActivity.ActivityType.SCANQRRECIPIENT, locker_unit=None)
+
+                if la:
                     la.save()
 
                 # if there is a locker activity involved, create object based on the locker activity
@@ -241,6 +265,11 @@ class Parcel(models.Model):
             except:
                 return False
         else:
+            if activity_type == ParcelActivity.ActivityType.WITHDRAWAPP:
+                # when the user presses on the withdraw button
+                pa = ParcelActivity(parcel=self, type=activity_type, associated_locker_activity=None)
+                pa.save()
+                return pa
             return False
 
     def __str__(self):
