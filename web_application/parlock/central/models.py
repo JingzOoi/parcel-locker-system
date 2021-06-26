@@ -59,7 +59,6 @@ class User(AbstractBaseUser):
         return self.is_admin
 
     def parcels(self):
-        self.parcel_set
         p_list = [parcel for parcel in Parcel.objects.filter(recipient=self)]
         p_list.sort(key=lambda p: p.last_seen_activity().datetime, reverse=True)
         return p_list
@@ -140,7 +139,7 @@ class LockerBase(models.Model):
             la = self.add_activity(activity_type=LockerActivity.ActivityType.CHANGE_V_CODE, locker_unit=None)
             return la
         else:
-            self.change_v_code()
+            return self.change_v_code()
 
 
 class LockerActivity(models.Model):
@@ -161,7 +160,7 @@ class LockerActivity(models.Model):
         SCANDIM = 6, "SCANDIM"  # reporting the parcel dimensions (or don't)
         UNLOCK = 7, "UNLOCK"  # [UNIT] unit unlock
         LOCK = 8, "LOCK"  # [UNIT] unit lock
-        CHANGE_V_CODE = 9, "CHANGE_V_CODE"
+        CHANGE_V_CODE = 9, "CHANGE_V_CODE"  # changing the verification code of the locker base.
 
     locker_base = models.ForeignKey(LockerBase, null=False, on_delete=models.CASCADE)
     locker_unit = models.ForeignKey(LockerUnit, null=True, on_delete=models.CASCADE)  # important! not every activity has to involve a locker unit!
