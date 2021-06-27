@@ -1,6 +1,7 @@
 {
     "meta": {
-        "_id": "LB00001",
-        "v_code": "YtZQA#mCC#D4"
+        "_id": "1",
+        "v_code": "YtZQA#mCC#D4",
+        "webserver_address": "http://192.168.1.8:8090"
     }
 }
