@@ -8,6 +8,7 @@ from PIL import Image, ImageEnhance
 import RPi.GPIO as GPIO
 from time import time, sleep
 from .imagetaker import Imagetaker
+from statistics import median
 
 
 class PartialObject:
@@ -113,27 +114,34 @@ class Dimtaker:
             cls.DISTANCE_FULL = cls.take_distance()
 
     @staticmethod
-    def take_distance(init: bool = False):
+    def take_distance():
         """
         Just takes the distance between the sensor and the closest object. Calculate height of object separately.
         """
-        if init:
-            GPIO.cleanup()
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(Dimtaker.DISTANCE_TRIG_PIN, GPIO.OUT)
-            GPIO.setup(Dimtaker.DISTANCE_ECHO_PIN, GPIO.IN)
-            GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, True)
-        sleep(0.00001)
-        GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
-        while not GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
-            start = time()
-        while GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
-            end = time()
+        def init_and_measure(init: bool = True):
+            if init:
+                GPIO.cleanup()
+                GPIO.setmode(GPIO.BCM)
+                GPIO.setup(Dimtaker.DISTANCE_TRIG_PIN, GPIO.OUT)
+                GPIO.setup(Dimtaker.DISTANCE_ECHO_PIN, GPIO.IN)
+                GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, True)
+            sleep(0.00001)
+            GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
+            while not GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
+                start = time()
+            while GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
+                end = time()
 
-        sig_time = end-start
+            sig_time = end-start
 
-        distance = sig_time / 0.0000058  # mm
-        return distance
+            distance = sig_time / 0.0000058  # mm
+            return distance
+
+        distance_list = []
+        for _ in range(6):
+            distance_list.append(init_and_measure())
+            sleep(.5)
+        return median(distance_list)
 
     @staticmethod
     def take_dimension_scale(img, full_distance=300, height_override: int = None, draw=False):
