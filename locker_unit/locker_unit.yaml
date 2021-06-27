@@ -1,0 +1,73 @@
+esphome:
+  name: locker_unit_1
+  platform: ESP32
+  board: esp32dev
+
+wifi:
+  ssid: "{ access_point_name }"
+  password: "{ access_point_password }"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Locker Unit 1 Fallback Hotspot"
+    password: "SdMpAiKNQnwU"
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# # Enable Home Assistant API
+# api:
+
+ota:
+
+globals:
+  - id: locker_unit_id
+    type: int
+    restore_value: no
+    initial_value: '1'
+
+switch:
+  - platform: gpio
+    pin: GPIO25
+    name: "motor_cw"
+    id: motor_cw
+  - platform: gpio
+    pin: GPIO26
+    name: "motor_ccw"
+    id: motor_ccw
+
+cover:
+  - platform: time_based
+    name: "onboard_motor"
+    id: onboard_motor
+    open_action:
+      - switch.turn_on: motor_cw
+      - switch.turn_off: motor_ccw
+    open_duration: 125ms
+    close_action:
+      - switch.turn_on: motor_ccw
+      - switch.turn_off: motor_cw
+    close_duration: 125ms
+    stop_action:
+      - switch.turn_off: motor_cw
+      - switch.turn_off: motor_ccw
+
+mqtt:
+  broker: { broker_ip_or_domain }
+  id: mqtt_component
+  on_message:
+    - topic: "locker_unit/register_query"
+      then:
+        - mqtt.publish_json:
+            topic: "locker_unit/register_reply"
+            payload: |-
+              root["id"] = id(locker_unit_id);
+    - topic: "locker_unit/1/lock"
+      then:
+        - cover.open: onboard_motor
+    - topic: "locker_unit/1/unlock"
+      then:
+        - cover.close: onboard_motor
+
