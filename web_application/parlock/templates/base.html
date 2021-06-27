@@ -5,7 +5,8 @@
 <head>
     <meta charset="UTF-8">
     <!-- <meta http-equiv="X-UA-Compatible" content="IE=edge"> -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0"> -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>
         {% block title %}
 
@@ -62,6 +63,7 @@
                         <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button"
                             aria-haspopup="true" aria-expanded="false">Lockers</a>
                         <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{% url 'locker-view' %}">Locations</a>
                             <a class="dropdown-item" href="#">Apply Locker</a>
                             <a class="dropdown-item" href="#">Report Locker</a>
                         </div>
@@ -72,6 +74,13 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#">Sign Up</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button"
+                            aria-haspopup="true" aria-expanded="false">Lockers</a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="#">Where to find them</a>
+                        </div>
                     </li>
 
                     {% endif %}
@@ -110,9 +119,25 @@
 
 
 
-    <div class="container" style="margin-top: 60px;">
-        {% block content %}
-        {% endblock content %}
+    <div class="container justify-content-center" style="margin-top: 60px;">
+        <div class="d-flex">
+            <div class="col-12">
+                <h1 class="mb-4">
+                    {% block pagetitle %}
+
+                    {% endblock pagetitle %}
+                </h1>
+            </div>
+        </div>
+        <div class="row justify-content-center py-5" style="background-color:whitesmoke;">
+            <div class="col-12 col-md-10 col-lg-8">
+                <div class="p-2">
+                    {% block content %}
+                    {% endblock content %}
+                </div>
+
+            </div>
+        </div>
     </div>
 
 

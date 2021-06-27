@@ -4,30 +4,50 @@
 Parcel Details
 {% endblock title %}
 
+
+{% block pagetitle %}
+
+Details for parcel {{parcel.tracking_number}}
+
+{% endblock pagetitle %}
+
 {% block content %}
 
-<h1>{{parcel.tracking_number}}</h1>
 
 
 <div class="list-group">
     <a href="#" class="list-group-item list-group-item-action flex-column align-items-start active">
         <div class="d-flex w-100 justify-content-between">
             <h5 class="mb-1">{{parcel_activity_latest.get_type_str}}</h5>
-            <small>3 days ago</small>
+            <small>{{parcel_activity_latest.datetime}}</small>
         </div>
+
+        {% if parcel_activity_latest.associated_locker_activity %}
+
+        <p class="mb-1">Location: {{parcel_activity_latest.associated_locker_activity.locker_base}}</p>
+        {% endif %}
+
         <small>Internal ID: {{parcel_activity_latest.id}}</small>
     </a>
     {% for pa in parcel_activity_history %}
-    <a href="#" class="list-group-item list-group-item-action flex-column align-items-start active">
+    <a href="#" class="list-group-item list-group-item-action flex-column align-items-start">
         <div class="d-flex w-100 justify-content-between">
             <h5 class="mb-1">{{pa.get_type_str}}</h5>
-            <small>3 days ago</small>
+            <small>{{pa.datetime}}</small>
         </div>
+        {% if pa.associated_locker_activity %}
+
+        <p class="mb-1">Location: {{pa.associated_locker_activity.locker_base}}</p>
+        {% endif %}
         <small>Internal ID: {{pa.id}}</small>
     </a>
     {% endfor %}
 </div>
 
-
+{% if parcel.can_be_withdrawn %} <div class="d-grid gap-2 mt-5">
+    <a href="#" class="btn btn-lg btn-success" type="button">Withdraw</a>
+    <a href="#" class="btn btn-lg btn-danger" type="button">Cancel</a>
+</div>
+{% endif %}
 
 {% endblock content %}
