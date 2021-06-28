@@ -1,4 +1,6 @@
 from time import sleep
+from utils.qrtaker import QRtaker
+from utils.imagetaker import Imagetaker
 from utils.dimtaker import Dimtaker
 from utils.jsonIO import jsonIO
 from utils.construct import construct_handler
@@ -22,6 +24,13 @@ class LockerUnit:
     def __eq__(self, other):
         return self.id == other.id
 
+    def dimensions(self) -> dict:
+        return {
+            "length": self.length,
+            "width": self.width,
+            "height": self.height
+        }
+
     def __repr__(self) -> str:
         return f"LockerUnit(id={self.id}, is_available={self.is_available}, length={self.length}, width={self.width}, height={self.height})"
 
@@ -40,8 +49,8 @@ class LockerBase:
         SCANQRRECIPIENT = "withdraw-qr"
         SCANQRPARCEL = "parcel"
         SCANDIM = "scandim"
-        UNLOCK = "unlock"
-        LOCK = "lock"
+        DEPOSIT = "deposit"  # note: these needs complete param
+        WITHDRAW = "withdraw"  # note: these needs complete param
         CHANGE_V_CODE = "change"
 
     class UnitCommand:
@@ -140,9 +149,9 @@ class LockerBase:
                 if locker_unit not in self.locker_units:
                     resp = self.contact_webserver(activity_type=LockerBase.ActivityType.REGISTER, params={"unit_id": locker_unit.id})
                     if resp and resp["success"]:
-                        locker_unit.length = resp["length"]
-                        locker_unit.width = resp["width"]
-                        locker_unit.height = resp["height"]
+                        locker_unit.length = float(resp["length"])
+                        locker_unit.width = float(resp["width"])
+                        locker_unit.height = float(resp["height"])
                         locker_unit.is_available = resp["is_available"]
                         self.locker_units.append(locker_unit)
                         self.logger.info(f"Added {repr(locker_unit)} into the range.")
@@ -178,5 +187,82 @@ while True:
     base.logger.info(f"Got distance: {dist:.4f}.")
     if dist < Dimtaker.DISTANCE_FULL*0.85:
         base.logger.info("Approved, starting image taking process.")
+        img = Imagetaker.take_image(process=True, save=True)
+        base.logger.info("Taken and processed, taking QR info.")
+        data = QRtaker.take_qr(img)
+        if data:
+            base.logger.info(f"Got QR info of {data}, contacting webserver for info.")
+            if data.startswith("withdraw_"):
+                # if starts with "withdraw_" = is a generated withdraw qr code
+                resp = base.contact_webserver(activity_type=LockerBase.ActivityType.SCANQRRECIPIENT, params={"qr_data": data})
+                if resp:
+                    unit_id = resp["unit_id"]
+                    match_units = list(filter(lambda unit: unit.id == unit_id, base.locker_units))
+                    if match_units:
+                        match_unit = match_units[0]
+                        base.logger.info(f"Found matching locker unit {repr(match_unit)}.")
+                        base.send_mqtt_command(locker_unit=match_unit, command=LockerBase.UnitCommand.QUERY_UNLOCK)
+                        base.contact_webserver(
+                            activity_type=LockerBase.ActivityType.WITHDRAW,
+                            params={
+                                "qr_data": data,
+                                "unit_id": match_unit.id,
+                                "complete": False
+                            }
+                        )
+                        sleep(10)
+                        base.send_mqtt_command(locker_unit=match_unit, command=LockerBase.UnitCommand.QUERY_LOCK)
+                        base.contact_webserver(
+                            activity_type=LockerBase.ActivityType.WITHDRAW,
+                            params={
+                                "qr_data": data,
+                                "unit_id": match_unit.id,
+                                "complete": True
+                            }
+                        )
+                        match_unit.is_available = True
+                        base.logger.info("Withdraw complete.")
+                    else:
+                        base.logger.error("No matching locker units found!")
+
+            else:
+                # if not start with "withdraw_" = probably a parcel qr
+                resp = base.contact_webserver(activity_type=LockerBase.ActivityType.SCANQRPARCEL, params={"tracking_number": data})
+                if resp:
+                    dims = Dimtaker.take_dimension_scale(img, full_distance=Dimtaker.DISTANCE_FULL)
+                    base.logger.info(f"Obtained dimensions of parcel: {json.dumps(dims)}")
+                    base.contact_webserver(activity_type=LockerBase.ActivityType.SCANDIM, params={"tracking_number": data})
+                    available_lockers = [locker_unit for locker_unit in base.locker_units if locker_unit.is_available]
+                    base.logger.info(f"Found {len(available_lockers)} available locker units.")
+                    for locker_unit in available_lockers:
+                        base.logger.info(f"Testing locker unit {locker_unit.id}.")
+                        if Dimtaker.test_fit(dims, locker_unit.dimensions()) is True:
+                            approved_unit = locker_unit
+                            base.logger.info(f"Found suitable locker unit {approved_unit.id}.")
+                            break
+                    if approved_unit:
+                        base.send_mqtt_command(locker_unit=approved_unit, command=LockerBase.UnitCommand.QUERY_UNLOCK)
+                        base.contact_webserver(
+                            activity_type=LockerBase.ActivityType.DEPOSIT,
+                            params={
+                                "tracking_number": data,
+                                "unit_id": approved_unit.id,
+                                "complete": False
+                            }
+                        )
+                        sleep(10)
+                        base.send_mqtt_command(locker_unit=approved_unit, command=LockerBase.UnitCommand.QUERY_LOCK)
+                        base.contact_webserver(
+                            activity_type=LockerBase.ActivityType.DEPOSIT,
+                            params={
+                                "tracking_number": data,
+                                "unit_id": approved_unit.id,
+                                "complete": True
+                            }
+                        )
+                        base.logger.info("Deposit complete.")
+                    else:
+                        base.logger.error("No available locker units found!")
+
     base.logger.info("Process complete, resetting.")
     sleep(10)
