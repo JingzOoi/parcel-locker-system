@@ -58,16 +58,23 @@ mqtt:
   broker: { broker_ip_or_domain }
   id: mqtt_component
   on_message:
-    - topic: "locker_unit/register_query"
+    - topic: "locker_unit/query/register"
       then:
         - mqtt.publish_json:
-            topic: "locker_unit/register_reply"
+            topic: "locker_unit/reply/register"
             payload: |-
               root["id"] = id(locker_unit_id);
-    - topic: "locker_unit/1/lock"
+    - topic: "locker_unit/query/lock/1"
       then:
         - cover.open: onboard_motor
-    - topic: "locker_unit/1/unlock"
+        - mqtt.publish_json:
+            topic: "locker_unit/reply/lock"
+            payload: |-
+              root["id"] = id(locker_unit_id);
+    - topic: "locker_unit/query/unlock/1"
       then:
         - cover.close: onboard_motor
-
+        - mqtt.publish_json:
+            topic: "locker_unit/reply/unlock"
+            payload: |-
+              root["id"] = id(locker_unit_id);
