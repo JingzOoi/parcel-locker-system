@@ -1,3 +1,4 @@
+from utils.construct import construct_logger
 from scipy.spatial import distance as dist
 from imutils import perspective
 from imutils import contours
@@ -8,6 +9,14 @@ from PIL import Image, ImageEnhance
 import RPi.GPIO as GPIO
 from time import time, sleep
 from .imagetaker import Imagetaker
+from statistics import median
+import logging
+
+dim_logger = construct_logger(file_path="logs/dimtaker.log")
+console_log_handler = logging.StreamHandler()
+console_log_handler.setLevel(logging.INFO)
+console_log_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+dim_logger.addHandler(console_log_handler)
 
 
 class PartialObject:
@@ -113,31 +122,56 @@ class Dimtaker:
             cls.DISTANCE_FULL = cls.take_distance()
 
     @staticmethod
-    def take_distance(init: bool = False):
+    def take_distance() -> float:
         """
         Just takes the distance between the sensor and the closest object. Calculate height of object separately.
         """
-        if init:
-            GPIO.cleanup()
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(Dimtaker.DISTANCE_TRIG_PIN, GPIO.OUT)
-            GPIO.setup(Dimtaker.DISTANCE_ECHO_PIN, GPIO.IN)
+        def init_and_measure(init: bool = True):
+            if init:
+                GPIO.setwarnings(False)
+                GPIO.cleanup()
+                GPIO.setmode(GPIO.BCM)
+                GPIO.setup(Dimtaker.DISTANCE_TRIG_PIN, GPIO.OUT)
+                GPIO.setup(Dimtaker.DISTANCE_ECHO_PIN, GPIO.IN)
+                GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
+                sleep(1)
+
+            GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
             GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, True)
-        sleep(0.00001)
-        GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
-        while not GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
+            sleep(0.00001)
+            GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
             start = time()
-        while GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
             end = time()
+            # while not GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
+            #     pass
+            loop_count = 0
+            while not GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
+                start = time()
+                if loop_count >= 240000:
+                    return None
+                loop_count += 1
+            while GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
+                end = time()
 
-        sig_time = end-start
+            sig_time = end-start
+            distance = sig_time * 171500  # mm
+            return round(distance, 4)
 
-        distance = sig_time / 0.0000058  # mm
-        return distance
+        dim_logger.info("Starting measuring distance attempt.")
+        distance_list = []
+        for i in range(1, 6):
+            # dim_logger.info(f"Measuring distance: attempt {i}")
+            dist = init_and_measure(init=True)
+            if dist:
+                distance_list.append(dist)
+        m = median(distance_list)
+        dim_logger.info(f"Measuring distance complete, got median of {m}")
+        return m
 
     @staticmethod
     def take_dimension_scale(img, full_distance=300, height_override: int = None, draw=False):
         """New algorithm that takes depth-of-view into consideration."""
+        dim_logger.info("Taking dimensions of the scanning platform.")
         cnts = Dimtaker.detect_edges(img)
         po_list = [PartialObject(c) for c in cnts]
         # assumes the partial object on the top left corner is always going to be the fiducial.
@@ -146,7 +180,7 @@ class Dimtaker:
         fiducial.actual_width = 24
         # uses a "greedy" filter to get the largest object in the partial object list, ignoring any other stuff such as reflections. if the camera is properly calibrated, this approach shouldn't cause any problems.
         parcel = sorted(po_list, key=lambda po: po.contour_area, reverse=True)[0]
-        height = Dimtaker.take_distance(init=True) if not height_override else height_override
+        height = Dimtaker.take_distance() if not height_override else height_override
 
         parcel.actual_length = parcel.scale_to_distance(
             parcel.pixel_length,
@@ -168,6 +202,7 @@ class Dimtaker:
             fiducial.draw(img_copy)
             parcel.draw(img_copy)
             Imagetaker.save_image(img_copy, "dimension_scale.jpg")
+        dim_logger.info(f"Taking dimensions of the scanning platform complete.")
         return {"length": parcel.actual_length, "width": parcel.actual_width, "height": a_height}
 
     @staticmethod
@@ -185,7 +220,7 @@ class Dimtaker:
             img_copy = img.copy()
             parcel.draw(img_copy)
             Imagetaker.save_image(img_copy, "dimension_ratio.jpg")
-        height = Dimtaker.take_distance(init=True)
+        height = Dimtaker.take_distance()
         a_height = full_distance - height
         return {"length": parcel.actual_length, "width": parcel.actual_width, "height": a_height}
 
@@ -200,6 +235,7 @@ class Dimtaker:
 
         @param object_1 = dictionary that has 3 key-value pairs: length, width, and height.
         """
+        dim_logger.info("Starting test fit attempt.")
         is_fit = False
         locker_length, locker_width, locker_height = object_2["length"]*.9, object_2["width"]*.9, object_2["height"]*.9
         # first of all, determine if length = length, width = width, height = height
@@ -211,9 +247,5 @@ class Dimtaker:
             is_fit = True
         elif object_1["height"] < locker_length and object_1["length"] < locker_width and object_1["width"] < locker_height:
             is_fit = True
+        dim_logger.info(f"Test fit attempts returned {is_fit}.")
         return is_fit
-
-
-if __name__ == "__main__":
-    print(Dimtaker.take_object_dimensions(Imagetaker.load_image("from_camera.jpg")))
-    # Dimtaker.save_image(dimtaker.drawn_image, "test.jpg")

@@ -1,6 +1,8 @@
 {
-    "meta": {
-        "_id": "LB00001",
-        "v_code": "YtZQA#mCC#D4"
+    "id": "",
+    "verification_code": "",
+    "webserver_address": "",
+    "mqtt": {
+        "host": ""
     }
 }
