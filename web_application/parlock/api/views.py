@@ -43,7 +43,8 @@ def locker_add_activity(request, locker_id: int, activity_type: str):
                         "success": True,
                         "length": lu.length,
                         "width": lu.width,
-                        "height": lu.height
+                        "height": lu.height,
+                        "is_available": lu.is_available
                     })
                 else:
                     return HttpResponseNotModified()
@@ -135,7 +136,7 @@ def locker_add_activity(request, locker_id: int, activity_type: str):
                         activity_type=ParcelActivity.ActivityType.WITHDRAWQR
                     )
                     if pa and isinstance(pa, ParcelActivity):
-                        return JsonResponse({"success": True})
+                        return JsonResponse({"success": True, "unit_id": p.get_deposited_unit().id})
                     else:
                         return JsonResponse({"success": False})
 

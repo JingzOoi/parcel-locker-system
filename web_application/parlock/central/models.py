@@ -76,6 +76,23 @@ class LockerUnit(models.Model):
     def __str__(self):
         return f"{self.id}"
 
+    @property
+    def is_available(self):
+        la = LockerActivity.objects.filter(locker_unit=self).latest("datetime")
+        if not la:
+            return None
+        else:
+            # when is a locker unit considered available? there are no parcels inside it.
+            # how to check if there are no parcels inside it?
+            # 1. when the last parcel activity is not LOCK
+            # 2. when the last parcel activity is LOCK, but the associating parcel activity is WITHDRAW.
+            if la.type != LockerActivity.ActivityType.LOCK:
+                return True
+            elif la.associated_parcel_activity().type == ParcelActivity.ActivityType.WITHDRAW:
+                return True
+            else:
+                return False
+
 
 class LockerBase(models.Model):
     """A logical representation of a locker base inside the system. A locker base can have many locker units. Is dimension."""
@@ -273,6 +290,12 @@ class Parcel(models.Model):
 
     def __str__(self):
         return str(self.id)
+
+    def get_deposited_unit(self):
+        # where is this parcel?
+        pa = ParcelActivity.objects.filter(parcel=self, type=ParcelActivity.ActivityType.DEPOSIT).latest("datetime")
+        if pa:
+            return pa.associated_locker_activity.locker_unit
 
 
 class ParcelActivity(models.Model):
