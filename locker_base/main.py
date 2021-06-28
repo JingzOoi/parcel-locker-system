@@ -1,3 +1,5 @@
+from time import sleep
+from utils.dimtaker import Dimtaker
 from utils.jsonIO import jsonIO
 from utils.construct import construct_handler
 import requests
@@ -12,9 +14,16 @@ class LockerUnit:
 
     def __init__(self, _id):
         self.id = _id
+        self.is_available = True
+        self.length = None
+        self.width = None
+        self.height = None
 
     def __eq__(self, other):
         return self.id == other.id
+
+    def __repr__(self) -> str:
+        return f"LockerUnit(id={self.id}, is_available={self.is_available}, length={self.length}, width={self.width}, height={self.height})"
 
 
 class LockerBase:
@@ -50,14 +59,24 @@ class LockerBase:
         self.id = self.CONFIG["id"]
         self.verification_code = self.CONFIG["verification_code"]
         self.webserver_address = self.CONFIG["webserver_address"]
+
         self.locker_units = []
+
         self.logger = logging.getLogger("locker_base")
+        self.logger.setLevel(logging.INFO)
         for hdlr in list(self.logger.handlers):
             print(hdlr)
             self.logger.removeHandler(hdlr)
         self.logger.addHandler(construct_handler(file_path="logs/info.log", level=logging.INFO))
         self.logger.addHandler(construct_handler(file_path="logs/error.log", level=logging.ERROR))
+
+        console_log_handler = logging.StreamHandler()
+        console_log_handler.setLevel(logging.INFO)
+        console_log_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+        self.logger.addHandler(console_log_handler)
+
         self.session = requests.Session()
+
         self.mqtt_client = self.init_mqtt()
         self.mqtt_client.connect(self.CONFIG["mqtt"]["host"])
         self.mqtt_client.loop_start()
@@ -86,10 +105,10 @@ class LockerBase:
             self.logger.info(f"Broadcasting command {command} to all locker units in the vicinity.")
             self.mqtt_client.publish(topic=f"{command}", payload=None, qos=0)
 
-    def contact_webserver(self, *, activity_type: str, **kwargs):
+    def contact_webserver(self, *, activity_type: str, params: dict = {}):
         """Responsible for contacting the webserver. The activity type is based on the inner class ActivityType."""
         url = f"{self.webserver_address}/api/locker/{self.id}/{activity_type}/"
-        params = {"verification_code": self.verification_code, **kwargs}
+        params = {"verification_code": self.verification_code, **params}  # v code is needed for every request sent to the webserver.
         self.logger.info(f"Contacting webserver at endpoint /{activity_type}. Data: {json.dumps(params)}")
         with self.session.post(url, data=params) as page:
             if page.status_code == 200:
@@ -116,12 +135,17 @@ class LockerBase:
             payload = json.loads(msg.payload)
             self.logger.info(f"Received MQTT message: {payload} from topic {msg.topic}.")
             locker_unit = LockerUnit(payload["id"])
-            if msg.topic == LockerBase.UnitCommand.REPLY_REGISTER:
+            if msg.topic.startswith(LockerBase.UnitCommand.REPLY_REGISTER):
                 self.logger.info(f"Attempting to add locker unit with ID {payload['id']} into the range.")
                 if locker_unit not in self.locker_units:
-                    # TODO: query the webserver for the dimensions of the locker unit. set the dimensions as the attributes of the locker_unit object before adding it into self.locker_units.
-                    self.locker_units.append(locker_unit)
-                    self.logger.info(f"Added locker unit (ID: {locker_unit.id}) into the range.")
+                    resp = self.contact_webserver(activity_type=LockerBase.ActivityType.REGISTER, params={"unit_id": locker_unit.id})
+                    if resp and resp["success"]:
+                        locker_unit.length = resp["length"]
+                        locker_unit.width = resp["width"]
+                        locker_unit.height = resp["height"]
+                        locker_unit.is_available = resp["is_available"]
+                        self.locker_units.append(locker_unit)
+                        self.logger.info(f"Added {repr(locker_unit)} into the range.")
 
         client = mqtt.Client()
         client.on_connect = on_connect
@@ -135,21 +159,24 @@ base = LockerBase(jsonIO.load("config/config.json"))
 base.logger.info("Finished reading configuration file.")
 
 # calibrate height sensor and full distance
-# base.logger.info("Calibrating height sensor.")
-# try:
-#     Dimtaker.DISTANCE_FULL = Dimtaker.take_distance()
-#     base.logger.info(f"Calibrating height sensor complete. Full height: {Dimtaker.DISTANCE_FULL:.4f}")
-# except Exception as e:
-#     base.logger.error(e)
+base.logger.info("Calibrating height sensor.")
+try:
+    Dimtaker.DISTANCE_FULL = Dimtaker.take_distance()
+    base.logger.info(f"Calibrating height sensor complete. Full height: {Dimtaker.DISTANCE_FULL:.4f}")
+except Exception as e:
+    base.logger.error(e)
 
 
-# base.contact_webserver(activity_type=LockerBase.ActivityType.ONLINE)
+base.contact_webserver(activity_type=LockerBase.ActivityType.ONLINE)
 base.send_mqtt_command(command=LockerBase.UnitCommand.QUERY_REGISTER)
 
 
 while True:
 
-    # measure distance
-    # if less than 80% then start process and stuff.
-
-    pass
+    base.logger.info("Starting new scanning process.")
+    dist = Dimtaker.take_distance()
+    base.logger.info(f"Got distance: {dist:.4f}.")
+    if dist < Dimtaker.DISTANCE_FULL*0.85:
+        base.logger.info("Approved, starting image taking process.")
+    base.logger.info("Process complete, resetting.")
+    sleep(10)
