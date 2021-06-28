@@ -1,7 +1,8 @@
 {
-    "meta": {
-        "_id": "1",
-        "v_code": "YtZQA#mCC#D4",
-        "webserver_address": "http://192.168.1.8:8090"
+    "id": "1",
+    "verification_code": ".?tJDu'4{sv>",
+    "webserver_address": "http://192.168.1.8:8090",
+    "mqtt": {
+        "host": "192.168.1.28"
     }
 }
