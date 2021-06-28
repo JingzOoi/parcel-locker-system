@@ -1,3 +1,4 @@
+from utils.construct import construct_logger
 from scipy.spatial import distance as dist
 from imutils import perspective
 from imutils import contours
@@ -9,6 +10,13 @@ import RPi.GPIO as GPIO
 from time import time, sleep
 from .imagetaker import Imagetaker
 from statistics import median
+import logging
+
+dim_logger = construct_logger(file_path="logs/dimtaker.log")
+console_log_handler = logging.StreamHandler()
+console_log_handler.setLevel(logging.INFO)
+console_log_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+dim_logger.addHandler(console_log_handler)
 
 
 class PartialObject:
@@ -120,14 +128,15 @@ class Dimtaker:
         """
         def init_and_measure(init: bool = True):
             if init:
+                GPIO.setwarnings(False)
                 GPIO.cleanup()
                 GPIO.setmode(GPIO.BCM)
-                GPIO.setwarnings(False)
                 GPIO.setup(Dimtaker.DISTANCE_TRIG_PIN, GPIO.OUT)
                 GPIO.setup(Dimtaker.DISTANCE_ECHO_PIN, GPIO.IN)
                 GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
                 sleep(1)
 
+            GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
             GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, True)
             sleep(0.00001)
             GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
@@ -135,8 +144,12 @@ class Dimtaker:
             end = time()
             # while not GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
             #     pass
+            loop_count = 0
             while not GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
                 start = time()
+                if loop_count >= 240000:
+                    return None
+                loop_count += 1
             while GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
                 end = time()
 
@@ -144,10 +157,16 @@ class Dimtaker:
             distance = sig_time * 171500  # mm
             return round(distance, 4)
 
+        dim_logger.info("Starting measuring distance attempt.")
         distance_list = []
-        for _ in range(6):
-            distance_list.append(init_and_measure(init=True))
-        return median(distance_list)
+        for i in range(1, 6):
+            dim_logger.info(f"Measuring distance: attempt {i}")
+            dist = init_and_measure(init=True)
+            if dist:
+                distance_list.append(dist)
+        m = median(distance_list)
+        dim_logger.info(f"Measuring distance complete, got median of {m}")
+        return m
 
     @staticmethod
     def take_dimension_scale(img, full_distance=300, height_override: int = None, draw=False):
