@@ -160,7 +160,7 @@ class Dimtaker:
         dim_logger.info("Starting measuring distance attempt.")
         distance_list = []
         for i in range(1, 6):
-            dim_logger.info(f"Measuring distance: attempt {i}")
+            # dim_logger.info(f"Measuring distance: attempt {i}")
             dist = init_and_measure(init=True)
             if dist:
                 distance_list.append(dist)
@@ -171,6 +171,7 @@ class Dimtaker:
     @staticmethod
     def take_dimension_scale(img, full_distance=300, height_override: int = None, draw=False):
         """New algorithm that takes depth-of-view into consideration."""
+        dim_logger.info("Taking dimensions of the scanning platform.")
         cnts = Dimtaker.detect_edges(img)
         po_list = [PartialObject(c) for c in cnts]
         # assumes the partial object on the top left corner is always going to be the fiducial.
@@ -179,7 +180,7 @@ class Dimtaker:
         fiducial.actual_width = 24
         # uses a "greedy" filter to get the largest object in the partial object list, ignoring any other stuff such as reflections. if the camera is properly calibrated, this approach shouldn't cause any problems.
         parcel = sorted(po_list, key=lambda po: po.contour_area, reverse=True)[0]
-        height = Dimtaker.take_distance(init=True) if not height_override else height_override
+        height = Dimtaker.take_distance() if not height_override else height_override
 
         parcel.actual_length = parcel.scale_to_distance(
             parcel.pixel_length,
@@ -201,6 +202,7 @@ class Dimtaker:
             fiducial.draw(img_copy)
             parcel.draw(img_copy)
             Imagetaker.save_image(img_copy, "dimension_scale.jpg")
+        dim_logger.info(f"Taking dimensions of the scanning platform complete.")
         return {"length": parcel.actual_length, "width": parcel.actual_width, "height": a_height}
 
     @staticmethod
@@ -218,7 +220,7 @@ class Dimtaker:
             img_copy = img.copy()
             parcel.draw(img_copy)
             Imagetaker.save_image(img_copy, "dimension_ratio.jpg")
-        height = Dimtaker.take_distance(init=True)
+        height = Dimtaker.take_distance()
         a_height = full_distance - height
         return {"length": parcel.actual_length, "width": parcel.actual_width, "height": a_height}
 
@@ -233,6 +235,7 @@ class Dimtaker:
 
         @param object_1 = dictionary that has 3 key-value pairs: length, width, and height.
         """
+        dim_logger.info("Starting test fit attempt.")
         is_fit = False
         locker_length, locker_width, locker_height = object_2["length"]*.9, object_2["width"]*.9, object_2["height"]*.9
         # first of all, determine if length = length, width = width, height = height
@@ -244,4 +247,5 @@ class Dimtaker:
             is_fit = True
         elif object_1["height"] < locker_length and object_1["length"] < locker_width and object_1["width"] < locker_height:
             is_fit = True
+        dim_logger.info(f"Test fit attempts returned {is_fit}.")
         return is_fit
