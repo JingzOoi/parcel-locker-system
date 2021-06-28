@@ -1,8 +1,8 @@
 {
-    "id": "1",
-    "verification_code": ".?tJDu'4{sv>",
-    "webserver_address": "http://192.168.1.8:8090",
+    "id": "",
+    "verification_code": "",
+    "webserver_address": "",
     "mqtt": {
-        "host": "192.168.1.28"
+        "host": ""
     }
 }

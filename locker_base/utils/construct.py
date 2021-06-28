@@ -34,7 +34,7 @@ def construct_logger(*, file_path, level: int = logging.INFO, max_bytes: int = 5
     logger.setLevel(level)
 
     # log formatter
-    logHandler = make_handler(file_path=file_path, level=level, max_bytes=max_bytes, backup_count=backup_count, formatter=formatter)
+    logHandler = construct_handler(file_path=file_path, level=level, max_bytes=max_bytes, backup_count=backup_count, formatter=formatter)
 
     # fixes bug when bot restarted but log file retained loghandler. this will remove any handlers it already had and replace with new ones initialized above
     for hdlr in list(logger.handlers):
