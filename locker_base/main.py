@@ -175,8 +175,9 @@ try:
 except Exception as e:
     base.logger.error(e)
 
-
+# reports to webserver about online status
 base.contact_webserver(activity_type=LockerBase.ActivityType.ONLINE)
+# queries for available locker units
 base.send_mqtt_command(command=LockerBase.UnitCommand.QUERY_REGISTER)
 
 
@@ -185,6 +186,7 @@ while True:
     base.logger.info("Starting new scanning process.")
     dist = Dimtaker.take_distance()
     base.logger.info(f"Got distance: {dist:.4f}.")
+    # process starts when closest object is 85% of the full distance
     if dist < Dimtaker.DISTANCE_FULL*0.85:
         base.logger.info("Approved, starting image taking process.")
         img = Imagetaker.take_image(process=True, save=True)
@@ -197,6 +199,7 @@ while True:
                 resp = base.contact_webserver(activity_type=LockerBase.ActivityType.SCANQRRECIPIENT, params={"qr_data": data})
                 if resp:
                     unit_id = resp["unit_id"]
+                    # find matching units connected to base
                     match_units = list(filter(lambda unit: unit.id == unit_id, base.locker_units))
                     if match_units:
                         match_unit = match_units[0]
@@ -210,6 +213,7 @@ while True:
                                 "complete": False
                             }
                         )
+                        # ideally, listen for command from button. listener requires a separate thread (probably) and can't be fit on this main process at the moment. future improvements.
                         sleep(10)
                         base.send_mqtt_command(locker_unit=match_unit, command=LockerBase.UnitCommand.QUERY_LOCK)
                         base.contact_webserver(
@@ -229,14 +233,19 @@ while True:
                 # if not start with "withdraw_" = probably a parcel qr
                 resp = base.contact_webserver(activity_type=LockerBase.ActivityType.SCANQRPARCEL, params={"tracking_number": data})
                 if resp:
+                    # measure dimension
                     dims = Dimtaker.take_dimension_scale(img, full_distance=Dimtaker.DISTANCE_FULL)
                     base.logger.info(f"Obtained dimensions of parcel: {json.dumps(dims)}")
+                    # report to webserver
                     base.contact_webserver(activity_type=LockerBase.ActivityType.SCANDIM, params={"tracking_number": data})
+                    # find an empty unit
                     available_lockers = [locker_unit for locker_unit in base.locker_units if locker_unit.is_available]
                     base.logger.info(f"Found {len(available_lockers)} available locker units.")
                     for locker_unit in available_lockers:
+                        # do a test fit to see if parcel fits into the unit
                         base.logger.info(f"Testing locker unit {locker_unit.id}.")
                         if Dimtaker.test_fit(dims, locker_unit.dimensions()) is True:
+                            # approve on the first successful attempt
                             approved_unit = locker_unit
                             base.logger.info(f"Found suitable locker unit {approved_unit.id}.")
                             break
@@ -250,6 +259,7 @@ while True:
                                 "complete": False
                             }
                         )
+                        # ideally, listen for command from button. listener requires a separate thread (probably) and can't be fit on this main process at the moment. future improvements.
                         sleep(10)
                         base.send_mqtt_command(locker_unit=approved_unit, command=LockerBase.UnitCommand.QUERY_LOCK)
                         base.contact_webserver(
