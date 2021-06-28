@@ -114,7 +114,7 @@ class Dimtaker:
             cls.DISTANCE_FULL = cls.take_distance()
 
     @staticmethod
-    def take_distance():
+    def take_distance() -> float:
         """
         Just takes the distance between the sensor and the closest object. Calculate height of object separately.
         """
@@ -122,25 +122,31 @@ class Dimtaker:
             if init:
                 GPIO.cleanup()
                 GPIO.setmode(GPIO.BCM)
+                GPIO.setwarnings(False)
                 GPIO.setup(Dimtaker.DISTANCE_TRIG_PIN, GPIO.OUT)
                 GPIO.setup(Dimtaker.DISTANCE_ECHO_PIN, GPIO.IN)
-                GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, True)
+                GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
+                sleep(1)
+
+            GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, True)
             sleep(0.00001)
             GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
+            start = time()
+            end = time()
+            # while not GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
+            #     pass
             while not GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
                 start = time()
             while GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
                 end = time()
 
             sig_time = end-start
-
-            distance = sig_time / 0.0000058  # mm
-            return distance
+            distance = sig_time * 171500  # mm
+            return round(distance, 4)
 
         distance_list = []
         for _ in range(6):
-            distance_list.append(init_and_measure())
-            sleep(.5)
+            distance_list.append(init_and_measure(init=True))
         return median(distance_list)
 
     @staticmethod
@@ -220,8 +226,3 @@ class Dimtaker:
         elif object_1["height"] < locker_length and object_1["length"] < locker_width and object_1["width"] < locker_height:
             is_fit = True
         return is_fit
-
-
-if __name__ == "__main__":
-    print(Dimtaker.take_object_dimensions(Imagetaker.load_image("from_camera.jpg")))
-    # Dimtaker.save_image(dimtaker.drawn_image, "test.jpg")
