@@ -1,7 +1,6 @@
 import logging
 from utils.construct import construct_logger
-from cv2 import QRCodeDetector, imread
-import cv2
+from cv2 import QRCodeDetector
 from .imagetaker import Imagetaker
 
 qr_logger = construct_logger(file_path="logs/qrtaker.log")
