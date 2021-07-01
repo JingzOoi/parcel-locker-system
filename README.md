@@ -2,8 +2,9 @@
 
 IMPORTANT: this is a prototype to fulfill school project requirements.
 
-- [Parcel Locker System](#parcel-locker-system)
-  - [stuff i need to get for the next time i power the locker base on](#stuff-i-need-to-get-for-the-next-time-i-power-the-locker-base-on)
+- [Unmanned Parcel Locker System](#unmanned-parcel-locker-system)
+  - [Understanding the system](#understanding-the-system)
+  - [Notable features](#notable-features)
 
 ## Understanding the system
 
@@ -35,4 +36,3 @@ There are three components to the sytem.
   - Withdrawing is just a matter of clicking on a button and holding it for the camera to scan until the correct locker opens.
 - Low requirements
   - The front end of the system is literally a web app. As long as the user has a mobile device that can browse the Internet, it can be used.
-
