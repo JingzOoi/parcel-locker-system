@@ -159,8 +159,8 @@ class Dimtaker:
 
         dim_logger.info("Starting measuring distance attempt.")
         distance_list = []
-        for i in range(1, 6):
-            # dim_logger.info(f"Measuring distance: attempt {i}")
+        for i in range(1, 15):
+            dim_logger.info(f"Measuring distance: attempt {i}. Latest: {distance_list[-1] if distance_list else None}")
             dist = init_and_measure(init=True)
             if dist:
                 distance_list.append(dist)
@@ -202,8 +202,9 @@ class Dimtaker:
             fiducial.draw(img_copy)
             parcel.draw(img_copy)
             Imagetaker.save_image(img_copy, "dimension_scale.jpg")
-        dim_logger.info(f"Taking dimensions of the scanning platform complete.")
-        return {"length": parcel.actual_length, "width": parcel.actual_width, "height": a_height}
+        result = {"length": round(parcel.actual_length, 4), "width": round(parcel.actual_width, 4), "height": round(a_height, 4)}
+        dim_logger.info(f"Taking dimensions of the scanning platform complete. Results: {result}")
+        return result
 
     @staticmethod
     def take_dimension_ratio(img, full_distance=300, draw=False):
@@ -237,7 +238,7 @@ class Dimtaker:
         """
         dim_logger.info("Starting test fit attempt.")
         is_fit = False
-        locker_length, locker_width, locker_height = object_2["length"]*.9, object_2["width"]*.9, object_2["height"]*.9
+        locker_length, locker_width, locker_height = object_2["length"]*.85, object_2["width"]*.85, object_2["height"]*.85
         # first of all, determine if length = length, width = width, height = height
         if object_1["length"] < locker_length and object_1["width"] < locker_width and object_1["height"] < locker_height:
             is_fit = True
