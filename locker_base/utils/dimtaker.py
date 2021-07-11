@@ -142,8 +142,7 @@ class Dimtaker:
             GPIO.output(Dimtaker.DISTANCE_TRIG_PIN, False)
             start = time()
             end = time()
-            # while not GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
-            #     pass
+
             loop_count = 0
             while not GPIO.input(Dimtaker.DISTANCE_ECHO_PIN):
                 start = time()

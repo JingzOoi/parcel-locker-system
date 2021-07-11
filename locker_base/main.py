@@ -38,7 +38,8 @@ class LockerUnit:
 class LockerBase:
 
     """
-    Logical representation of a locker base. Is initialized once during the execution of this file, data persisting till death.
+    Logical representation of a locker base. 
+    Is initialized once during the execution of this file, data persisting till death.
     """
 
     class ActivityType:
@@ -275,4 +276,4 @@ while True:
                         base.logger.error("No available locker units found!")
 
     base.logger.info("Process complete, resetting.")
-    sleep(10)
+    sleep(2)

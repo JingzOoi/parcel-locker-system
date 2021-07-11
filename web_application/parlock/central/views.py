@@ -1,5 +1,5 @@
 from django import http
-from django.http.response import HttpResponse
+from django.http.response import HttpResponse, HttpResponseForbidden, HttpResponseGone
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from .models import LockerActivity, LockerBase, Parcel, ParcelActivity
@@ -10,14 +10,7 @@ from django.contrib.auth.decorators import login_required
 # Create your views here.
 
 
-def index(request):
-    if not request.user.is_authenticated:
-        return redirect("login")
-    else:
-        return HttpResponse(f"you are logged in as {request.user.username}. <a href='logout/'>Logout</a>")
-
 # home view
-
 
 def home(request):
     context_dict = {}
@@ -41,7 +34,7 @@ def parcel(request):
         "completed": []
     }
     for parcel in request.user.parcels():
-        if parcel.last_seen_activity().type in (7, 8):
+        if parcel.is_complete():
             context_dict["completed"].append(parcel)
         else:
             context_dict["in_progress"].append(parcel)
@@ -84,6 +77,22 @@ def add_parcel_action(request):
     else:
         context_dict["form"] = ParcelForm()
     return render(request, "parcel/register.html", context=context_dict)
+
+
+@login_required(login_url="login")
+def parcel_withdraw_application(request, parcel_id):
+    # submit an application to withdraw parcel.
+    context_dict = {}
+    parcel = get_object_or_404(Parcel, pk=parcel_id)
+    if not parcel.recipient == request.user:
+        return HttpResponseForbidden()
+    else:
+        pa = parcel.add_activity(locker_base=None, activity_type=ParcelActivity.ActivityType.WITHDRAWAPP)
+        if isinstance(pa, ParcelActivity):
+            context_dict["qr_data"] = parcel.make_retrieval_code()
+            return render(request, "parcel/withdraw.html", context=context_dict)
+        else:
+            return HttpResponseGone()
 
 
 def lockers(request):

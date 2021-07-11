@@ -47,7 +47,8 @@ My Parcels
           </div>
           <div class="card-body">
 
-            {% if parcel.can_be_withdrawn%} <a href="#" class="btn btn-outline-primary card-link">
+            {% if parcel.can_be_withdrawn%} <a href="{% url 'parcel-withdraw' parcel_id=parcel.id %}"
+              class="btn btn-outline-primary card-link">
               Withdraw</a>
             {% endif %}
 
@@ -65,7 +66,7 @@ My Parcels
         {% else %}
 
         <h3>Nothing here! </h3>
-        <p class="lead"><a href="{% url 'parcel-register' %}">Register a parcel</a> and see it appear here!</p>
+        <p class="lead"><a href="{% url 'parcel-register' %}">Register a parcel</a> to see it appear here!</p>
 
         {% endif %}
 
@@ -78,11 +79,20 @@ My Parcels
 
 
         {% for parcel in completed %}
-        <div class="card mb-3">
+        <div class="card {% if parcel.last_seen_activity.type == 9 %}
+
+        border-danger
+        {% else %}
+        border-success
+          
+        {% endif %} mb-3">
           <h3 class="card-header">{{parcel.tracking_number}}</h3>
           <div class="card-body">
-            <h5 class="card-title">Status: <span
-                class="badge rounded-pill bg-info">{{parcel.last_seen_activity.get_type_str}}</span></h5>
+            <h5 class="card-title">Status: <span class="badge rounded-pill {% if parcel.last_seen_activity.type == 9 %}
+                  bg-danger
+                  {% else %}
+                  bg-info
+                {% endif %} ">{{parcel.last_seen_activity.get_type_str}}</span></h5>
             <h6 class="card-subtitle text-muted">Last Updated: {{parcel.last_seen_activity.datetime}}</h6>
           </div>
           <div class="card-body">
@@ -101,7 +111,8 @@ My Parcels
         {% endfor %}
         {% else %}
         <h3>Nothing here! </h3>
-        <p class="lead"><a href="{% url 'parcel-register' %}">Register a parcel</a> and see it appear here!</p>
+        <p class="lead"><a href="{% url 'parcel-register' %}">Register a parcel</a> and complete it to see it appear
+          here!</p>
 
         {% endif %}
       </div>

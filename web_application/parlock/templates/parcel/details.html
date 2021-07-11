@@ -45,9 +45,9 @@ Details for parcel {{parcel.tracking_number}}
 </div>
 
 {% if parcel.can_be_withdrawn %} <div class="d-grid gap-2 mt-5">
-    <a href="#" class="btn btn-lg btn-success" type="button">Withdraw</a>
-    <a href="#" class="btn btn-lg btn-danger" type="button">Cancel</a>
+    <a href="{% url 'parcel-withdraw' parcel_id=parcel.id %}" class="btn btn-lg btn-success" type="button">Withdraw</a>
 </div>
+<a href="#" class="btn btn-lg btn-danger" type="button">Cancel</a>
 {% endif %}
 
 {% endblock content %}

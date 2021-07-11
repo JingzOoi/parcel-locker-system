@@ -1,16 +1,38 @@
-# Parcel Locker System
+# Unmanned Parcel Locker System
 
 IMPORTANT: this is a prototype to fulfill school project requirements.
 
-This is a parcel locker system (planned to be full stack). Planned features include:
+- [Unmanned Parcel Locker System](#unmanned-parcel-locker-system)
+  - [Understanding the system](#understanding-the-system)
+  - [Notable features](#notable-features)
 
-- no contact parcel deposit
-- no contact parcel withdrawal
-- parcel dimension screening
+## Understanding the system
 
+This is a parcel locker system designed for no-contact parcel deposit and withdrawal actions, and serves to transfer some of the responsibilities of the last mile delivery process from the logistics company to the recipient.
 
-**web application** is hosted on cloud, multiple **locker bases** can connect to the webserver through http, multiple **locker units** can connect to a locker base via mqtt. locker base scans the qr code, verifies the identity of the parcel (to see if it has arrived at the correct location), scans the dimension of the parcel, determines the locker that has a size most suitable to the parcel. the base then sends a record of admission to the web server, which notifies the recipient to withdraw.
+Last mile delivery is often the chokehold of the logistics lifecycle in terms of time and financial resources. Imagine being a delivery employee spending 5 minutes outside a recipients' door only to discover that they aren't at home. Now you finish less work and have less time to complete the rest of the work. By introducing a checkpoint where employees can make less stops and deploy more parcels, recipients are also able to benefit by being able to withdraw anytime that suits their schedule.
 
-the web application is powered by django, the locker units a collection of python scripts, and locker units ESPHome.
+There are three components to the sytem.
 
-the recipient uses the web application to generate a one-time qr code that will expire, and lets the locker base scan the qr as a form of verification. the locker base sends the instruction to unlock, then lock the locker unit after the parcel has been collected.
+1. The web application lives on the cloud, and is powered by PostgreSQL and Django. Recipients use it:
+   - to register parcels into the system (telling the system to expect parcels to be delivered to the location); and
+   - to initiate the withdraw parcel process.
+2. The locker base is deployed into the field and lives on a Raspberry Pi. An ultrasonic sensor and a camera component is mounted. Multiple locker bases can be deployed and they connect to the webserver through HTTP powered by Python.
+   - Delivery employees use it to initiate the deposit parcel process.
+   - Recipients use it as part of the withdraw parcel process.
+3. The locker unit is deployed close to the locker base. Multiple locker units can be assigned to a locker base. These are powered by ESPHome based ESP microcontrollers, and communicate to the base via MQTT. They simply listen to the base and lock/unlock when required.
+
+***
+
+## Notable features
+
+- Dimension scanning
+  - A unique algorithm was developed to scan the length, width, and height of parcels using only image processing magic. This feature allows locker bases to assign parcels to locker units that has the capacity to hold it.
+- Fully modular
+  - Locker units are not tied to locker bases, so they can be manufactured individually and assigned to locations that need them more very easily.
+- Minimal interaction
+  - Scan, put, and go. Scan, take, and go. The system is designed to perform workflow while requiring minimal interaction from the user, reducing the need for training, time and financial resources, as well as risk of disease transmission.
+  - Depositing is just a matter of placing the parcel on the scanning platform and wait till a suitable locker opens.
+  - Withdrawing is just a matter of clicking on a button and holding it for the camera to scan until the correct locker opens.
+- Low requirements
+  - The front end of the system is literally a web app. As long as the user has a mobile device that can browse the Internet, it can be used.
