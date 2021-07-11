@@ -214,7 +214,7 @@ while True:
                             }
                         )
                         # ideally, listen for command from button. listener requires a separate thread (probably) and can't be fit on this main process at the moment. future improvements.
-                        sleep(10)
+                        sleep(15)
                         base.send_mqtt_command(locker_unit=match_unit, command=LockerBase.UnitCommand.QUERY_LOCK)
                         base.contact_webserver(
                             activity_type=LockerBase.ActivityType.WITHDRAW,
@@ -234,7 +234,7 @@ while True:
                 resp = base.contact_webserver(activity_type=LockerBase.ActivityType.SCANQRPARCEL, params={"tracking_number": data})
                 if resp:
                     # measure dimension
-                    dims = Dimtaker.take_dimension_scale(img, full_distance=Dimtaker.DISTANCE_FULL)
+                    dims = Dimtaker.take_dimension_scale(img, full_distance=Dimtaker.DISTANCE_FULL, draw=True)
                     base.logger.info(f"Obtained dimensions of parcel: {json.dumps(dims)}")
                     # report to webserver
                     base.contact_webserver(activity_type=LockerBase.ActivityType.SCANDIM, params={"tracking_number": data})
@@ -260,7 +260,7 @@ while True:
                             }
                         )
                         # ideally, listen for command from button. listener requires a separate thread (probably) and can't be fit on this main process at the moment. future improvements.
-                        sleep(10)
+                        sleep(15)
                         base.send_mqtt_command(locker_unit=approved_unit, command=LockerBase.UnitCommand.QUERY_LOCK)
                         base.contact_webserver(
                             activity_type=LockerBase.ActivityType.DEPOSIT,
