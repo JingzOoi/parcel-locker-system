@@ -10,7 +10,7 @@ Home
 {% if user.is_authenticated %}
 Welcome back, {{ user.username }}
 {% else %}
-You are not logged in. <a href="{% url 'login' %}">Log in</a> or sign up to continue.
+You are not logged in. <a href="{% url 'login' %}">Log in</a> or <a href="{% url 'register' %}">sign up</a> to continue.
 
 {% endif %}
 
