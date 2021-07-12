@@ -15,11 +15,20 @@ Log In
 
 {% if form.errors %}
 
-<div class="alert alert-dismissible alert-danger">
+<div class="alert alert-dismissible alert-danger px-5">
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    <strong>Invalid credentials!</strong>
-</div>
+    <strong>The following few items need to be reviewed:</strong>
 
+    {% for field in form %}
+
+    {% for error in field.errors %}
+    <li>{{ error|escape }}</li>
+
+    {% endfor %}
+
+    {% endfor %}
+
+</div>
 
 {% endif %}
 
@@ -53,7 +62,7 @@ Log In
                 </div>
             </div>
         </form>
-        <p class="text-center">Not a member? <a data-toggle="tab" href="#signup">Sign Up</a></p>
+        <p class="text-center">Not a member? <a data-toggle="tab" href="{% url 'register' %}">Sign Up</a></p>
     </div>
 
 </div>

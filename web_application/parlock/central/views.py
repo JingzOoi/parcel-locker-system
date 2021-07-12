@@ -3,7 +3,7 @@ from django.http.response import HttpResponse, HttpResponseForbidden, HttpRespon
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from .models import LockerActivity, LockerBase, Parcel, ParcelActivity
-from .forms import ParcelForm
+from .forms import ParcelForm, UserRegistrationForm
 from datetime import datetime
 from django.contrib.postgres.search import SearchVector
 from django.contrib.auth.decorators import login_required
@@ -28,6 +28,7 @@ def profile(request):
 # parcel info
 
 
+@login_required(login_url="login")
 def parcel(request):
     context_dict = {
         "in_progress": [],
@@ -43,6 +44,7 @@ def parcel(request):
     return render(request, "parcel/main.html", context=context_dict)
 
 
+@login_required(login_url="login")
 def parcel_details(request, parcel_id):
     context_dict = {}
     parcel = get_object_or_404(Parcel, id=parcel_id)
@@ -65,7 +67,7 @@ def add_parcel_action(request):
             new_parcel.recipient = request.user
             new_parcel.save()
             ParcelActivity(parcel=new_parcel, type=ParcelActivity.ActivityType.REGISTER.value, associated_locker_activity=None).save()
-            return http.HttpResponseRedirect("parcel/")
+            return redirect("parcel")
         else:
             context_dict["form"] = f
     elif request.method == "GET" and "locker" in request.GET:
@@ -77,6 +79,27 @@ def add_parcel_action(request):
     else:
         context_dict["form"] = ParcelForm()
     return render(request, "parcel/register.html", context=context_dict)
+
+
+def add_user_action(request):
+    context_dict = {}
+    if request.method == "POST":
+        f = UserRegistrationForm(request.POST)
+        if f.is_valid():
+            new_user = f.save(commit=False)
+            new_user.save()
+            return redirect("login")
+        else:
+            context_dict["form"] = f
+    elif request.method == "GET" and "locker" in request.GET:
+        try:
+            lb = LockerBase.objects.get(pk=request.GET["locker"])
+            context_dict["form"] = ParcelForm({"destination_locker": lb})
+        except LockerBase.DoesNotExist:
+            context_dict["form"] = ParcelForm()
+    else:
+        context_dict["form"] = UserRegistrationForm()
+    return render(request, "registration/register.html", context=context_dict)
 
 
 @login_required(login_url="login")
@@ -99,7 +122,8 @@ def lockers(request):
     context_dict = {}
     if request.user.is_authenticated:
         most_used = [parcel.destination_locker for parcel in request.user.parcels()]
-        context_dict["most_used"] = max(set(most_used), key=most_used.count)
+        if most_used:
+            context_dict["most_used"] = max(set(most_used), key=most_used.count)
     if request.method == "POST":
         kw = request.POST.get("keyword", None)
         if kw:
