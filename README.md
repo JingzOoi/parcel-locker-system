@@ -1,6 +1,6 @@
 # Unmanned Parcel Locker System
 
-IMPORTANT: this is a prototype to fulfill school project requirements.
+IMPORTANT: this is a prototype to fulfill school project requirements. In this release, additional setup is required. 
 
 - [Unmanned Parcel Locker System](#unmanned-parcel-locker-system)
   - [Understanding the system](#understanding-the-system)
