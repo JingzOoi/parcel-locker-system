@@ -11,7 +11,7 @@ Locker Home
 {% block content %}
 
 
-{% if user.is_authenticated %}
+{% if user.is_authenticated and most_used %}
 
 <div class="card border-primary mb-3">
     <div class="card-header">
@@ -48,7 +48,7 @@ Locker Home
         </h4>
         <p class="card-text">{{ locker.address }}</p>
         <button type="button" class="btn btn-primary btn-copy">Copy
-            Address</button><a href="{% url 'parcel-register' %}?locker={{ most_used.id }}"
+            Address</button><a href="{% url 'parcel-register' %}?locker={{ locker.id }}"
             class="btn btn-secondary">Register
             Parcel</a>
     </div>
